@@ -135,12 +135,6 @@ export default function Home() {
         {/* ── Hero ──────────────────────────────────────────── */}
         <section className="relative flex flex-col items-center justify-center text-center px-4 pt-24 pb-16 min-h-[92vh]">
 
-          {/* Badge pill */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/8 dark:bg-primary/10 px-4 py-1.5 text-xs font-medium text-primary mb-8 hover:border-primary/60 transition-colors duration-200 cursor-default">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            Powered by EAS · Built on Inkonchain
-          </div>
-
           {/* Badge image */}
           <div className="relative mb-10 group">
             <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-3xl scale-125 opacity-50 group-hover:opacity-90 transition-opacity duration-700" />
