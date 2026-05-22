@@ -413,9 +413,6 @@ export default function Home() {
               <a href="https://docs.inkonchain.com" target="_blank" rel="noreferrer" className="hover:text-foreground transition-colors flex items-center gap-1">
                 Inkonchain <ExternalLink className="w-3 h-3" />
               </a>
-              <a href="https://attest.sh" target="_blank" rel="noreferrer" className="hover:text-foreground transition-colors flex items-center gap-1">
-                EAS <ExternalLink className="w-3 h-3" />
-              </a>
               <a href="https://kraken.com" target="_blank" rel="noreferrer" className="hover:text-foreground transition-colors flex items-center gap-1">
                 Kraken <ExternalLink className="w-3 h-3" />
               </a>
