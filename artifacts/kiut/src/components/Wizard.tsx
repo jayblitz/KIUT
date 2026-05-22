@@ -267,11 +267,11 @@ export default function Wizard() {
   // ── Live on-chain fee + balance ───────────────────────────────────────────
   const NFT_CONTRACT = import.meta.env.VITE_NFT_CONTRACT_ADDRESS as `0x${string}` | undefined;
 
-  const { data: liveMintFee } = useReadContract({
+  const { data: liveMintFee, refetch: refetchMintFee, dataUpdatedAt: mintFeeUpdatedAt } = useReadContract({
     address: NFT_CONTRACT,
     abi: KIUT_ABI,
     functionName: "mintFee",
-    query: { enabled: !!NFT_CONTRACT && step === 4 },
+    query: { enabled: !!NFT_CONTRACT && step === 4, refetchInterval: 30_000 },
   });
 
   const { data: walletBalance } = useBalance({
@@ -666,7 +666,19 @@ export default function Wizard() {
                     <p className="flex items-center justify-between gap-2 flex-wrap">Attestation: <span className="font-mono text-foreground break-all">{(attestationUid || nftStatus?.attestationUid || "–").slice(0, 12)}…</span></p>
                     <p className="flex items-center justify-between gap-2 flex-wrap">Chain: <span className="text-foreground">Inkonchain (57073)</span></p>
                     <p className="flex items-center justify-between gap-2 flex-wrap">
-                      Mint fee:{" "}
+                      <span className="flex items-center gap-1">
+                        Mint fee
+                        <button
+                          type="button"
+                          onClick={() => refetchMintFee()}
+                          title={mintFeeUpdatedAt ? `Last updated ${new Date(mintFeeUpdatedAt).toLocaleTimeString()}` : "Refresh fee"}
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
+                            <path fillRule="evenodd" d="M13.836 2.477a.75.75 0 0 1 .75.75v3.182a.75.75 0 0 1-.75.75h-3.182a.75.75 0 0 1 0-1.5h1.37l-.84-.841a4.5 4.5 0 0 0-7.08.932.75.75 0 0 1-1.3-.75 6 6 0 0 1 9.46-1.242l.842.84V3.227a.75.75 0 0 1 .75-.75Zm-.911 7.5A.75.75 0 0 1 13.199 11a6 6 0 0 1-9.46 1.243l-.842-.84v1.371a.75.75 0 0 1-1.5 0V9.591a.75.75 0 0 1 .75-.75H5.33a.75.75 0 0 1 0 1.5H3.96l.841.841a4.5 4.5 0 0 0 7.08-.932.75.75 0 0 1 1.044-.273Z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </span>
                       <span className="text-foreground">
                         {liveMintFee !== undefined
                           ? `${formatEther(liveMintFee)} ETH`
