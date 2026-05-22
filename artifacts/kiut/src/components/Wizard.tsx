@@ -13,7 +13,7 @@ import {
   confirmNftMint,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle2, ArrowRight, ShieldCheck, Lock, Zap, ExternalLink, Copy } from "lucide-react";
+import { Loader2, CheckCircle2, ArrowRight, ShieldCheck, Lock, Zap, ExternalLink, Copy, Twitter } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { KIUT_ABI } from "@/lib/kiut-contract";
 
@@ -136,6 +136,40 @@ function NftReceiptCard({
           >
             View Mint Transaction <ExternalLink className="w-3.5 h-3.5" />
           </a>
+
+          {/* Share / Copy row */}
+          <div className="w-full grid grid-cols-2 gap-2.5">
+            {/* Share on X */}
+            <a
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
+                `I just got my KIUT soulbound NFT — verified human on Inkonchain. Token #${tokenId} ${INK_EXPLORER}/token/${contractAddress}/instance/${tokenId}`
+              )}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 hover:border-primary/50 transition-all duration-200 text-sm font-medium"
+            >
+              <Twitter className="w-3.5 h-3.5" />
+              Share on X
+            </a>
+
+            {/* Copy link */}
+            <button
+              onClick={() => copy(`${INK_EXPLORER}/token/${contractAddress}/instance/${tokenId}`, "link")}
+              className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-white/10 border border-white/20 text-white/80 hover:bg-white/15 hover:text-white transition-all duration-200 text-sm font-medium"
+            >
+              {copied === "link" ? (
+                <>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-400">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  Copy Link
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
