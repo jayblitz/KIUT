@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useAccount, useSignMessage, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { parseEventLogs } from "viem";
+import { useAccount, useSignMessage, useWriteContract, useWaitForTransactionReceipt, useReadContract, useBalance } from "wagmi";
+import { parseEventLogs, formatEther } from "viem";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Button } from "@/components/ui/button";
 import {
@@ -229,6 +229,28 @@ export default function Wizard() {
   const startKrakenAuth = useStartKrakenAuth();
   const createAttestation = useCreateAttestation();
   const mintNftAuth = useMintKiutNft();
+
+  // ── Live on-chain fee + balance ───────────────────────────────────────────
+  const NFT_CONTRACT = import.meta.env.VITE_NFT_CONTRACT_ADDRESS as `0x${string}` | undefined;
+
+  const { data: liveMintFee } = useReadContract({
+    address: NFT_CONTRACT,
+    abi: KIUT_ABI,
+    functionName: "mintFee",
+    query: { enabled: !!NFT_CONTRACT && step === 4 },
+  });
+
+  const { data: walletBalance } = useBalance({
+    address,
+    query: { enabled: !!address && step === 4 },
+  });
+
+  const GAS_ESTIMATE_WEI = BigInt("10000000000000"); // ~0.00001 ETH
+  const totalNeeded = liveMintFee !== undefined ? liveMintFee + GAS_ESTIMATE_WEI : undefined;
+  const hasInsufficientBalance =
+    totalNeeded !== undefined &&
+    walletBalance !== undefined &&
+    walletBalance.value < totalNeeded;
 
   // wagmi hooks for on-chain mint
   const { writeContractAsync } = useWriteContract();
@@ -608,9 +630,34 @@ export default function Wizard() {
                     <p>Wallet: <span className="font-mono text-foreground">{address?.slice(0, 6)}…{address?.slice(-4)}</span></p>
                     <p>Attestation: <span className="font-mono text-foreground">{(attestationUid || nftStatus?.attestationUid || "–").slice(0, 12)}…</span></p>
                     <p>Chain: <span className="text-foreground">Inkonchain (57073)</span></p>
-                    <p>Mint fee: <span className="text-foreground">0.0005 ETH</span></p>
+                    <p>
+                      Mint fee:{" "}
+                      <span className="text-foreground">
+                        {liveMintFee !== undefined
+                          ? `${formatEther(liveMintFee)} ETH`
+                          : <span className="inline-block w-20 h-3.5 bg-muted-foreground/20 rounded animate-pulse align-middle" />}
+                      </span>
+                    </p>
+                    <p>
+                      Est. gas:{" "}
+                      <span className="text-foreground">~{formatEther(GAS_ESTIMATE_WEI)} ETH</span>
+                    </p>
+                    <p>
+                      Your balance:{" "}
+                      <span className={hasInsufficientBalance ? "text-destructive font-medium" : "text-foreground"}>
+                        {walletBalance !== undefined
+                          ? `${parseFloat(formatEther(walletBalance.value)).toFixed(6)} ETH`
+                          : <span className="inline-block w-24 h-3.5 bg-muted-foreground/20 rounded animate-pulse align-middle" />}
+                      </span>
+                    </p>
                     <p>Type: <span className="text-foreground">Soulbound · Non-transferable</span></p>
                   </div>
+                )}
+
+                {!isMinting && hasInsufficientBalance && (
+                  <p className="text-sm text-destructive font-medium max-w-sm mx-auto">
+                    Insufficient balance — you need at least {totalNeeded !== undefined ? `${formatEther(totalNeeded)} ETH` : "…"} on Inkonchain to cover the mint fee and gas.
+                  </p>
                 )}
 
                 {isMinting && (
@@ -632,10 +679,10 @@ export default function Wizard() {
                     size="lg"
                     className="w-full max-w-sm bg-primary hover:bg-primary/90 text-white shadow-[0_0_20px_rgba(147,51,234,0.3)]"
                     onClick={handleMint}
-                    disabled={!attestationUid && !nftStatus?.attestationUid}
+                    disabled={(!attestationUid && !nftStatus?.attestationUid) || hasInsufficientBalance}
                   >
                     <Zap className="mr-2 w-4 h-4" />
-                    Mint KIUT NFT
+                    {hasInsufficientBalance ? "Insufficient Balance" : "Mint KIUT NFT"}
                   </Button>
                 )}
               </div>
