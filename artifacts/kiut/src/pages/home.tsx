@@ -386,15 +386,6 @@ export default function Home() {
               <span className="text-muted-foreground text-sm">— Onchain Identity Verification</span>
             </div>
 
-            <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <a href="https://docs.inkonchain.com" target="_blank" rel="noreferrer" className="hover:text-foreground transition-colors flex items-center gap-1">
-                Inkonchain <ExternalLink className="w-3 h-3" />
-              </a>
-              <a href="https://kraken.com" target="_blank" rel="noreferrer" className="hover:text-foreground transition-colors flex items-center gap-1">
-                Kraken <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-
             <div className="text-xs text-muted-foreground/60">
               © {new Date().getFullYear()} KIUT. All rights reserved.
             </div>
