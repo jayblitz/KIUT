@@ -353,7 +353,7 @@ export default function Home() {
         {/* ── CTA Banner ────────────────────────────────────── */}
         <section className="py-24 px-4">
           <div className="max-w-3xl mx-auto text-center">
-            <div className="relative rounded-3xl border border-primary/20 bg-primary/5 dark:bg-primary/10 p-12 overflow-hidden">
+            <div className="relative rounded-3xl border border-primary/20 bg-primary/5 dark:bg-primary/10 p-6 sm:p-12 overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-violet-500/10 pointer-events-none" />
               <div className="relative z-10">
                 <img src="/kiut-badge.jpeg" alt="KIUT" className="w-16 h-16 rounded-xl mx-auto mb-6 shadow-lg" />

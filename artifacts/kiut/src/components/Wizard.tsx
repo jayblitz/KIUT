@@ -180,16 +180,16 @@ function InfoCell({
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {link && (
-            <a href={link} target="_blank" rel="noreferrer" className="text-white/40 hover:text-white/80 transition-colors">
-              <ExternalLink className="w-3 h-3" />
+            <a href={link} target="_blank" rel="noreferrer" className="p-1 -m-1 text-white/40 hover:text-white/80 transition-colors">
+              <ExternalLink className="w-3.5 h-3.5" />
             </a>
           )}
           {copyable && onCopy && (
             <button
               onClick={onCopy}
-              className="text-white/40 hover:text-white/80 transition-colors"
+              className="p-1 -m-1 text-white/40 hover:text-white/80 transition-colors"
             >
-              {copied ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+              {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
           )}
         </div>
@@ -505,7 +505,7 @@ export default function Wizard() {
   const isMinting = mintPhase !== "ready" && mintPhase !== "done";
 
   return (
-    <div className="w-full max-w-xl mx-auto border border-border bg-card rounded-2xl p-6 shadow-2xl relative overflow-hidden">
+    <div className="w-full max-w-xl mx-auto border border-border bg-card rounded-2xl p-4 sm:p-6 shadow-2xl relative overflow-hidden">
       {/* Progress bar */}
       <div className="absolute top-0 left-0 w-full h-1 bg-muted">
         <div
@@ -515,7 +515,7 @@ export default function Wizard() {
       </div>
 
       {/* Step tabs */}
-      <div className="flex gap-2 mb-8 text-xs font-medium">
+      <div className="flex gap-1 sm:gap-2 mb-6 sm:mb-8 text-xs font-medium">
         {([1, 2, 3, 4] as Step[]).map((s) => (
           <div
             key={s}
@@ -523,12 +523,13 @@ export default function Wizard() {
               step >= s ? "border-primary text-primary" : "border-border text-muted-foreground"
             }`}
           >
-            {stepLabels[s - 1]}
+            <span className="sm:hidden">{s}</span>
+            <span className="hidden sm:inline">{stepLabels[s - 1]}</span>
           </div>
         ))}
       </div>
 
-      <div className="min-h-[320px] flex flex-col items-center justify-center text-center space-y-6">
+      <div className="min-h-[260px] sm:min-h-[320px] flex flex-col items-center justify-center text-center space-y-5 sm:space-y-6">
 
         {/* ── Step 1: Connect Wallet ───────────────────────────────────────── */}
         {step === 1 && (
@@ -626,11 +627,11 @@ export default function Wizard() {
                 </h2>
 
                 {!isMinting && (
-                  <div className="text-sm text-muted-foreground space-y-1.5 bg-muted/40 rounded-lg p-4 text-left max-w-sm mx-auto">
-                    <p>Wallet: <span className="font-mono text-foreground">{address?.slice(0, 6)}…{address?.slice(-4)}</span></p>
-                    <p>Attestation: <span className="font-mono text-foreground">{(attestationUid || nftStatus?.attestationUid || "–").slice(0, 12)}…</span></p>
-                    <p>Chain: <span className="text-foreground">Inkonchain (57073)</span></p>
-                    <p>
+                  <div className="text-sm text-muted-foreground space-y-1.5 bg-muted/40 rounded-lg p-3 sm:p-4 text-left w-full max-w-sm mx-auto">
+                    <p className="flex items-center justify-between gap-2 flex-wrap">Wallet: <span className="font-mono text-foreground break-all">{address?.slice(0, 6)}…{address?.slice(-4)}</span></p>
+                    <p className="flex items-center justify-between gap-2 flex-wrap">Attestation: <span className="font-mono text-foreground break-all">{(attestationUid || nftStatus?.attestationUid || "–").slice(0, 12)}…</span></p>
+                    <p className="flex items-center justify-between gap-2 flex-wrap">Chain: <span className="text-foreground">Inkonchain (57073)</span></p>
+                    <p className="flex items-center justify-between gap-2 flex-wrap">
                       Mint fee:{" "}
                       <span className="text-foreground">
                         {liveMintFee !== undefined
@@ -638,11 +639,11 @@ export default function Wizard() {
                           : <span className="inline-block w-20 h-3.5 bg-muted-foreground/20 rounded animate-pulse align-middle" />}
                       </span>
                     </p>
-                    <p>
+                    <p className="flex items-center justify-between gap-2 flex-wrap">
                       Est. gas:{" "}
                       <span className="text-foreground">~{formatEther(GAS_ESTIMATE_WEI)} ETH</span>
                     </p>
-                    <p>
+                    <p className="flex items-center justify-between gap-2 flex-wrap">
                       Your balance:{" "}
                       <span className={hasInsufficientBalance ? "text-destructive font-medium" : "text-foreground"}>
                         {walletBalance !== undefined
@@ -650,7 +651,7 @@ export default function Wizard() {
                           : <span className="inline-block w-24 h-3.5 bg-muted-foreground/20 rounded animate-pulse align-middle" />}
                       </span>
                     </p>
-                    <p>Type: <span className="text-foreground">Soulbound · Non-transferable</span></p>
+                    <p className="flex items-center justify-between gap-2 flex-wrap">Type: <span className="text-foreground">Soulbound · Non-transferable</span></p>
                   </div>
                 )}
 
