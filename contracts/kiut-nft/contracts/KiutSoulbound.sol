@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 /// @title KiutSoulbound — non-transferable ERC-721 identity token
 /// @notice One token per verified Kraken + Inkonchain user wallet.
 ///         Minting requires an off-chain signature from the authorised minter wallet.
+///         Each authorisation is single-use (nonce consumed on mint).
 contract KiutSoulbound is ERC721, Ownable {
     using ECDSA for bytes32;
 
@@ -27,6 +28,9 @@ contract KiutSoulbound is ERC721, Ownable {
     /// @notice Tracks which wallets have already minted
     mapping(address => bool) public hasMinted;
 
+    /// @notice Tracks which nonces have been consumed (replay protection)
+    mapping(bytes32 => bool) public usedNonces;
+
     event Minted(address indexed to, uint256 indexed tokenId);
     event MintFeeUpdated(uint256 newFee);
     event FeeRecipientUpdated(address newRecipient);
@@ -35,6 +39,7 @@ contract KiutSoulbound is ERC721, Ownable {
     error AlreadyMinted();
     error InsufficientFee();
     error InvalidSignature();
+    error NonceAlreadyUsed();
     error TransferNotAllowed();
     error FeeTransferFailed();
 
@@ -63,19 +68,24 @@ contract KiutSoulbound is ERC721, Ownable {
     // ─── Mint ────────────────────────────────────────────────────────────────
 
     /// @notice Mint a soulbound KIUT token.
+    /// @param nonce    Single-use bytes32 nonce issued by the backend.
     /// @param signature Backend-signed EIP-191 authorisation over
-    ///        keccak256(abi.encodePacked(address(this), msg.sender))
-    function mint(bytes calldata signature) external payable {
+    ///        keccak256(abi.encodePacked(address(this), msg.sender, nonce))
+    function mint(bytes32 nonce, bytes calldata signature) external payable {
         if (hasMinted[msg.sender]) revert AlreadyMinted();
         if (msg.value < mintFee) revert InsufficientFee();
+        if (usedNonces[nonce]) revert NonceAlreadyUsed();
 
         // Verify the backend authorisation signature
-        bytes32 hash = keccak256(abi.encodePacked(address(this), msg.sender));
+        bytes32 hash = keccak256(abi.encodePacked(address(this), msg.sender, nonce));
         bytes32 ethHash = MessageHashUtils.toEthSignedMessageHash(hash);
         address signer = ECDSA.recover(ethHash, signature);
         if (signer != minterSigner) revert InvalidSignature();
 
+        // Consume nonce first (checks-effects-interactions)
+        usedNonces[nonce] = true;
         hasMinted[msg.sender] = true;
+
         uint256 tokenId = _nextTokenId++;
         _safeMint(msg.sender, tokenId);
 

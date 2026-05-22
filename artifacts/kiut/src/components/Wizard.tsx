@@ -339,7 +339,6 @@ export default function Wizard() {
     confirmNftMint({
       walletAddress: address,
       txHash,
-      tokenId: tokenIdStr,
     })
       .then(() => {
         setMintPhase("done");
@@ -425,17 +424,17 @@ export default function Wizard() {
       { data: { walletAddress: address, attestationUid: uid } },
       {
         onSuccess: async (auth) => {
-          const { signature, mintFee, contractAddress } = auth;
+          const { signature, nonce, mintFee, contractAddress } = auth;
           setMintContractAddress(contractAddress);
 
-          // Step B: ask wallet to call contract.mint(signature)
+          // Step B: ask wallet to call contract.mint(nonce, signature)
           setMintPhase("waiting-wallet");
           try {
             const txHash = await writeContractAsync({
               address: contractAddress as `0x${string}`,
               abi: KIUT_ABI,
               functionName: "mint",
-              args: [signature as `0x${string}`],
+              args: [nonce as `0x${string}`, signature as `0x${string}`],
               value: BigInt(mintFee),
             });
             setMintTxHash(txHash);

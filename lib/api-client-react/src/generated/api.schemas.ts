@@ -86,7 +86,9 @@ export interface MintResult {
 export interface MintAuthorization {
   /** Backend-signed EIP-191 authorisation for the minter wallet */
   signature: string;
-  /** Mint fee in wei (as decimal string) */
+  /** Single-use bytes32 nonce (hex) that was signed — pass directly to contract.mint() */
+  nonce: string;
+  /** Live mint fee in wei read from the contract */
   mintFee: string;
   /** Deployed KiutSoulbound contract address */
   contractAddress: string;
@@ -94,8 +96,8 @@ export interface MintAuthorization {
 
 export interface ConfirmMintInput {
   walletAddress: string;
+  /** On-chain transaction hash of the mint */
   txHash: string;
-  tokenId: string;
 }
 
 export interface ConfirmMintResult {

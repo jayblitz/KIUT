@@ -2,7 +2,10 @@ export const KIUT_ABI = [
   {
     type: "function",
     name: "mint",
-    inputs: [{ name: "signature", type: "bytes", internalType: "bytes" }],
+    inputs: [
+      { name: "nonce", type: "bytes32", internalType: "bytes32" },
+      { name: "signature", type: "bytes", internalType: "bytes" },
+    ],
     outputs: [],
     stateMutability: "payable",
   },
