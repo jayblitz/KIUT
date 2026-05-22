@@ -108,14 +108,6 @@ export default function Home() {
             <a href="#how-it-works" className="hover:text-foreground transition-colors duration-150">How It Works</a>
             <a href="#demo" className="hover:text-foreground transition-colors duration-150">SBT</a>
             <a href="#faq" className="hover:text-foreground transition-colors duration-150">FAQ</a>
-            <a
-              href="https://docs.inkonchain.com"
-              target="_blank"
-              rel="noreferrer"
-              className="hover:text-foreground transition-colors duration-150 flex items-center gap-1"
-            >
-              Docs <ExternalLink className="w-3 h-3" />
-            </a>
           </nav>
 
           <div className="flex items-center gap-3">
