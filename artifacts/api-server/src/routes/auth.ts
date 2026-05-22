@@ -60,11 +60,6 @@ router.post("/auth/kraken/start", async (req, res): Promise<void> => {
     nonce,
   });
 
-  await db
-    .update(noncesTable)
-    .set({ used: true })
-    .where(eq(noncesTable.nonce, nonce));
-
   let authUrl: string;
   if (!KRAKEN_CLIENT_ID) {
     authUrl = `${FRONTEND_URL}?krakenLinked=true&walletAddress=${encodeURIComponent(walletAddress)}&krakenAccountId=demo_kraken_${walletAddress.slice(2, 8)}`;
