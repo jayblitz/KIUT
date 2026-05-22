@@ -607,8 +607,8 @@ export default function Wizard() {
                     <p className={mintPhase === "waiting-wallet" ? "text-primary" : mintPhase === "authorizing" ? "text-muted-foreground/40" : ""}>
                       {mintPhase === "waiting-wallet" ? "▶" : mintPhase === "authorizing" ? "○" : "✓"} Approve in wallet
                     </p>
-                    <p className={["confirming-tx", "confirming-db"].includes(mintPhase) ? "text-primary" : ["ready", "authorizing", "waiting-wallet"].includes(mintPhase) ? "text-muted-foreground/40" : ""}>
-                      {mintPhase === "confirming-tx" || mintPhase === "confirming-db" ? "▶" : mintPhase === "done" ? "✓" : "○"} Confirming on-chain
+                    <p className={["confirming-tx", "confirming-db"].includes(mintPhase) ? "text-primary" : "text-muted-foreground/40"}>
+                      {mintPhase === "confirming-tx" || mintPhase === "confirming-db" ? "▶" : "○"} Confirming on-chain
                     </p>
                   </div>
                 )}

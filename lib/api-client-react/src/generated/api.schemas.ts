@@ -73,6 +73,16 @@ export interface MintNftInput {
   attestationUid: string;
 }
 
+export interface MintResult {
+  success: boolean;
+  /** The minted NFT token ID */
+  tokenId: string;
+  /** The mint transaction hash */
+  txHash: string;
+  /** Link to view the mint transaction on Inkonchain explorer */
+  explorerUrl: string;
+}
+
 export interface MintAuthorization {
   /** Backend-signed EIP-191 authorisation for the minter wallet */
   signature: string;
