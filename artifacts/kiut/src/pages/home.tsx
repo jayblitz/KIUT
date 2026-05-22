@@ -175,11 +175,6 @@ export default function Home() {
             <StatPill value="1:1" label="Wallet per Account" />
           </div>
 
-          {/* Scroll indicator */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 text-muted-foreground/60 animate-bounce">
-            <span className="text-xs tracking-widest uppercase">Scroll</span>
-            <ArrowDown className="w-4 h-4" />
-          </div>
         </section>
 
         {/* ── Wizard (appears when started) ─────────────────── */}
