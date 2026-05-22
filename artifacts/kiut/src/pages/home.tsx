@@ -171,7 +171,7 @@ export default function Home() {
           <div className="flex flex-wrap items-center justify-center gap-3">
             <StatPill value="EAS" label="Attestation Standard" />
             <StatPill value="INK" label="Blockchain" />
-            <StatPill value="0 Cost" label="No Signing Fee" />
+            <StatPill value="KRAKEN" label="No Signing Fee" />
             <StatPill value="1:1" label="Wallet per Account" />
           </div>
 
