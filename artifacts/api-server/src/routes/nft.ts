@@ -33,6 +33,11 @@ router.post("/nft/mint", async (req, res): Promise<void> => {
     return;
   }
 
+  if (!verification[0].attestationUid) {
+    res.status(400).json({ error: "not_attested", message: "EAS attestation has not been issued for this wallet. Complete the attestation step first." });
+    return;
+  }
+
   if (verification[0].hasMinted) {
     res.status(409).json({ error: "already_minted", message: "KIUT NFT has already been minted for this wallet" });
     return;

@@ -62,7 +62,16 @@ router.post("/auth/kraken/start", async (req, res): Promise<void> => {
 
   let authUrl: string;
   if (!KRAKEN_CLIENT_ID) {
-    authUrl = `${FRONTEND_URL}?krakenLinked=true&walletAddress=${encodeURIComponent(walletAddress)}&krakenAccountId=demo_kraken_${walletAddress.slice(2, 8)}`;
+    // Demo mode: create the verifications linkage server-side right away
+    const demoKrakenAccountId = `demo_kraken_${walletAddress.slice(2, 8)}`;
+    await db
+      .insert(verificationsTable)
+      .values({ walletAddress, krakenAccountId: demoKrakenAccountId, hasMinted: false })
+      .onConflictDoUpdate({
+        target: verificationsTable.walletAddress,
+        set: { krakenAccountId: demoKrakenAccountId, updatedAt: new Date() },
+      });
+    authUrl = `${FRONTEND_URL}?krakenLinked=true&walletAddress=${encodeURIComponent(walletAddress)}`;
   } else {
     const params = new URLSearchParams({
       response_type: "code",
