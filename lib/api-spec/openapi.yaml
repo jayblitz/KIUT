@@ -10,6 +10,12 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Kraken OAuth authentication
+  - name: verify
+    description: Verification and attestation
+  - name: nft
+    description: Soulbound NFT operations
 paths:
   /healthz:
     get:
@@ -24,6 +30,180 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/kraken/start:
+    post:
+      operationId: startKrakenAuth
+      tags: [auth]
+      summary: Start Kraken OAuth flow
+      description: Returns the Kraken OAuth authorization URL to redirect the user to
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KrakenAuthStartInput"
+      responses:
+        "200":
+          description: OAuth URL generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KrakenAuthUrlResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /auth/kraken/callback:
+    get:
+      operationId: krakenAuthCallback
+      tags: [auth]
+      summary: Kraken OAuth callback
+      description: Exchanges the authorization code for account info and links the wallet
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Kraken account linked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KrakenLinkResult"
+        "400":
+          description: Invalid code or state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /verify/sign-message:
+    post:
+      operationId: getSignMessage
+      tags: [verify]
+      summary: Get message to sign
+      description: Generates a nonce and returns the message the user must sign with their wallet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WalletSignRequest"
+      responses:
+        "200":
+          description: Message to sign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletSignMessage"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /verify/attest:
+    post:
+      operationId: createAttestation
+      tags: [verify]
+      summary: Create EAS attestation
+      description: Issues an on-chain EAS attestation on Inkonchain linking a verified Kraken account to a wallet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttestInput"
+      responses:
+        "200":
+          description: Attestation created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttestResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Already attested
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /nft/mint:
+    post:
+      operationId: mintKiutNft
+      tags: [nft]
+      summary: Mint KIUT soulbound NFT
+      description: Mints the KIUT soulbound NFT to the user's verified wallet address
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MintNftInput"
+      responses:
+        "200":
+          description: NFT minted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MintResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: NFT already minted for this address
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /nft/status/{walletAddress}:
+    get:
+      operationId: getNftStatus
+      tags: [nft]
+      summary: Get NFT mint status
+      description: Returns whether the wallet has minted a KIUT NFT and related details
+      parameters:
+        - name: walletAddress
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: NFT status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NftStatus"
+        "400":
+          description: Invalid wallet address
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +214,171 @@ components:
       required:
         - status
 
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+        - message
+
+    KrakenAuthStartInput:
+      type: object
+      properties:
+        walletAddress:
+          type: string
+          description: The connected Web3 wallet address
+        signature:
+          type: string
+          description: The wallet signature proving ownership
+        nonce:
+          type: string
+          description: The nonce that was signed
+      required:
+        - walletAddress
+        - signature
+        - nonce
+
+    KrakenAuthUrlResult:
+      type: object
+      properties:
+        authUrl:
+          type: string
+          description: The Kraken OAuth URL to redirect the user to
+        state:
+          type: string
+          description: The OAuth state parameter
+      required:
+        - authUrl
+        - state
+
+    KrakenLinkResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        walletAddress:
+          type: string
+        krakenAccountId:
+          type: string
+        message:
+          type: string
+      required:
+        - success
+        - walletAddress
+        - krakenAccountId
+        - message
+
+    WalletSignRequest:
+      type: object
+      properties:
+        walletAddress:
+          type: string
+          description: The wallet address requesting a message to sign
+      required:
+        - walletAddress
+
+    WalletSignMessage:
+      type: object
+      properties:
+        message:
+          type: string
+          description: The full message string to sign with the wallet
+        nonce:
+          type: string
+          description: The nonce embedded in the message
+      required:
+        - message
+        - nonce
+
+    AttestInput:
+      type: object
+      properties:
+        walletAddress:
+          type: string
+        krakenAccountId:
+          type: string
+        signature:
+          type: string
+          description: Wallet signature proving address ownership
+        nonce:
+          type: string
+      required:
+        - walletAddress
+        - krakenAccountId
+        - signature
+        - nonce
+
+    AttestResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        attestationUid:
+          type: string
+          description: The EAS attestation UID on Inkonchain
+        txHash:
+          type: string
+          description: The transaction hash of the attestation
+        explorerUrl:
+          type: string
+          description: Link to view the attestation on the Inkonchain explorer
+      required:
+        - success
+        - attestationUid
+        - txHash
+        - explorerUrl
+
+    MintNftInput:
+      type: object
+      properties:
+        walletAddress:
+          type: string
+          description: The verified wallet address to mint the NFT to
+        attestationUid:
+          type: string
+          description: The EAS attestation UID confirming verification
+      required:
+        - walletAddress
+        - attestationUid
+
+    MintResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        tokenId:
+          type: string
+          description: The minted NFT token ID
+        txHash:
+          type: string
+          description: The mint transaction hash
+        explorerUrl:
+          type: string
+          description: Link to view the mint transaction on Inkonchain explorer
+      required:
+        - success
+        - tokenId
+        - txHash
+        - explorerUrl
+
+    NftStatus:
+      type: object
+      properties:
+        hasMinted:
+          type: boolean
+        tokenId:
+          type: ["string", "null"]
+        txHash:
+          type: ["string", "null"]
+        explorerUrl:
+          type: ["string", "null"]
+        attestationUid:
+          type: ["string", "null"]
+        mintedAt:
+          type: ["string", "null"]
+      required:
+        - hasMinted

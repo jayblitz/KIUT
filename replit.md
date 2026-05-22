@@ -1,45 +1,60 @@
-# [Project name]
+# KIUT — Onchain Identity Verification
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A soulbound NFT verification platform. Users connect their Kraken account (via OAuth) and Web3 wallet, sign an EIP-191 message, receive an EAS attestation on Inkonchain, and mint a soulbound NFT proving they are a verified unique human onchain.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
+- `pnpm --filter @workspace/kiut run dev` — run the frontend (Vite dev server)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+
+## Required Environment Variables
+
+- `DATABASE_URL` — Postgres connection string (auto-provided by Replit)
+- `FRONTEND_URL` — Frontend URL for OAuth redirects (set to the Replit dev domain)
+- `KRAKEN_CLIENT_ID` — Kraken OAuth app client ID (optional; demo mode if unset)
+- `KRAKEN_CLIENT_SECRET` — Kraken OAuth app client secret (optional)
+- `KRAKEN_REDIRECT_URI` — Kraken OAuth redirect URI, must be `{API_URL}/api/auth/kraken/callback`
+- `EAS_SIGNER_PRIVATE_KEY` — Private key for signing EAS attestations on Inkonchain (optional; demo mode if unset)
+
+**Demo mode**: If `KRAKEN_CLIENT_ID` or `EAS_SIGNER_PRIVATE_KEY` are not set, the backend simulates Kraken linking and generates fake transaction hashes. The full flow still works end-to-end.
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
+- Frontend: React + Vite, RainbowKit + wagmi + viem (wallet), TailwindCSS, shadcn/ui
 - API: Express 5
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- API codegen: Orval (from OpenAPI spec at `lib/api-spec/openapi.yaml`)
+- Attestation: EAS SDK on Inkonchain (chain ID 57073)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `lib/api-spec/openapi.yaml` — Single source of truth for the API contract
+- `lib/db/src/schema/index.ts` — Drizzle ORM schema (verifications, nonces, kraken_oauth_states)
+- `artifacts/api-server/src/routes/` — Express route handlers
+- `artifacts/kiut/src/components/Wizard.tsx` — 4-step verification wizard
+- `artifacts/kiut/src/pages/home.tsx` — Landing page with FAQ accordion
+- `artifacts/kiut/src/lib/web3.ts` — Wagmi config + Inkonchain chain definition
 
-## Architecture decisions
+## Architecture Decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- **Soulbound**: NFTs are non-transferable; enforced at the smart contract level and tracked in DB
+- **EIP-191 signing**: Wallet ownership is proven without spending gas
+- **EAS attestations**: Onchain attestation on Inkonchain links wallet to verified Kraken identity
+- **Demo mode**: Missing credentials trigger stub behavior so the full UX can be previewed without live Kraken/EAS setup
+- **OpenAPI-first**: All API types are generated from the spec, keeping frontend and backend in sync
 
-## Product
+## User Preferences
 
-_Describe the high-level user-facing capabilities of this app once they exist._
-
-## User preferences
-
-_Populate as you build — explicit user instructions worth remembering across sessions._
+_Populate as you build._
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Run `pnpm --filter @workspace/api-spec run codegen` after editing `openapi.yaml` to regenerate types and hooks
+- Run `pnpm --filter @workspace/db run push` after editing the DB schema
+- `FRONTEND_URL` must match the exact origin the Kraken OAuth redirect lands on (no trailing slash)

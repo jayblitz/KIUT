@@ -26,3 +26,15 @@ externalPort = 8080
 [[ports]]
 localPort = 8081
 externalPort = 80
+
+[[ports]]
+localPort = 23653
+externalPort = 3000
+
+[nix]
+channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+FRONTEND_URL = "https://719f2bb9-3cb9-43cc-92c9-a39d13626785-00-11135q7buw7xk.janeway.replit.dev"
