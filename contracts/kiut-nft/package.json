@@ -6,10 +6,12 @@
   "scripts": {
     "compile": "hardhat compile",
     "deploy": "hardhat run scripts/deploy.ts --network inkonchain",
-    "deploy:local": "hardhat run scripts/deploy.ts --network localhost"
+    "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
+    "verify": "hardhat run scripts/verify.ts --network inkonchain"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ethers": "^3.0.8",
+    "@nomicfoundation/hardhat-verify": "^2.1.3",
     "@types/node": "^22.15.31",
     "hardhat": "^2.22.19",
     "ts-node": "^10.9.2",
