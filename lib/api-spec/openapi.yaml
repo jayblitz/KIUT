@@ -303,8 +303,6 @@ components:
       properties:
         walletAddress:
           type: string
-        krakenAccountId:
-          type: string
         signature:
           type: string
           description: Wallet signature proving address ownership
@@ -312,7 +310,6 @@ components:
           type: string
       required:
         - walletAddress
-        - krakenAccountId
         - signature
         - nonce
 

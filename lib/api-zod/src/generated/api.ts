@@ -34,19 +34,15 @@ export const StartKrakenAuthResponse = zod.object({
 
 
 /**
- * Exchanges the authorization code for account info and links the wallet
+ * Exchanges the Kraken authorization code for account info and links the wallet.
+On success, responds with a 302 redirect to the frontend with query params:
+`?krakenLinked=true&walletAddress=<addr>&krakenAccountId=<id>`.
+
  * @summary Kraken OAuth callback
  */
 export const KrakenAuthCallbackQueryParams = zod.object({
   "code": zod.coerce.string(),
   "state": zod.coerce.string()
-})
-
-export const KrakenAuthCallbackResponse = zod.object({
-  "success": zod.boolean(),
-  "walletAddress": zod.string(),
-  "krakenAccountId": zod.string(),
-  "message": zod.string()
 })
 
 
@@ -70,7 +66,6 @@ export const GetSignMessageResponse = zod.object({
  */
 export const CreateAttestationBody = zod.object({
   "walletAddress": zod.string(),
-  "krakenAccountId": zod.string(),
   "signature": zod.string().describe('Wallet signature proving address ownership'),
   "nonce": zod.string()
 })

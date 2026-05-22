@@ -83,7 +83,6 @@ export default function Wizard() {
       {
         data: {
           walletAddress: verState.walletAddress,
-          krakenAccountId: krakenAccountId || `demo_kraken_${verState.walletAddress.slice(2, 8)}`,
           signature: verState.signature,
           nonce: verState.nonce,
         }

@@ -27,7 +27,6 @@ import type {
   KrakenAuthCallbackParams,
   KrakenAuthStartInput,
   KrakenAuthUrlResult,
-  KrakenLinkResult,
   MintNftInput,
   MintResult,
   NftStatus,
@@ -213,12 +212,15 @@ export const getKrakenAuthCallbackUrl = (params: KrakenAuthCallbackParams,) => {
 }
 
 /**
- * Exchanges the authorization code for account info and links the wallet
+ * Exchanges the Kraken authorization code for account info and links the wallet.
+On success, responds with a 302 redirect to the frontend with query params:
+`?krakenLinked=true&walletAddress=<addr>&krakenAccountId=<id>`.
+
  * @summary Kraken OAuth callback
  */
-export const krakenAuthCallback = async (params: KrakenAuthCallbackParams, options?: RequestInit): Promise<KrakenLinkResult> => {
+export const krakenAuthCallback = async (params: KrakenAuthCallbackParams, options?: RequestInit): Promise<unknown> => {
 
-  return customFetch<KrakenLinkResult>(getKrakenAuthCallbackUrl(params),
+  return customFetch<unknown>(getKrakenAuthCallbackUrl(params),
   {
     ...options,
     method: 'GET'
@@ -238,7 +240,7 @@ export const getKrakenAuthCallbackQueryKey = (params?: KrakenAuthCallbackParams,
     }
 
 
-export const getKrakenAuthCallbackQueryOptions = <TData = Awaited<ReturnType<typeof krakenAuthCallback>>, TError = ErrorType<ApiError>>(params: KrakenAuthCallbackParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof krakenAuthCallback>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getKrakenAuthCallbackQueryOptions = <TData = Awaited<ReturnType<typeof krakenAuthCallback>>, TError = ErrorType<void | ApiError>>(params: KrakenAuthCallbackParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof krakenAuthCallback>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -257,14 +259,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type KrakenAuthCallbackQueryResult = NonNullable<Awaited<ReturnType<typeof krakenAuthCallback>>>
-export type KrakenAuthCallbackQueryError = ErrorType<ApiError>
+export type KrakenAuthCallbackQueryError = ErrorType<void | ApiError>
 
 
 /**
  * @summary Kraken OAuth callback
  */
 
-export function useKrakenAuthCallback<TData = Awaited<ReturnType<typeof krakenAuthCallback>>, TError = ErrorType<ApiError>>(
+export function useKrakenAuthCallback<TData = Awaited<ReturnType<typeof krakenAuthCallback>>, TError = ErrorType<void | ApiError>>(
  params: KrakenAuthCallbackParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof krakenAuthCallback>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {

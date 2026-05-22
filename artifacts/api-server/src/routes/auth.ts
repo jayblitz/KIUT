@@ -100,12 +100,16 @@ router.get("/auth/kraken/callback", async (req, res): Promise<void> => {
 
   const { walletAddress } = stateRecord[0];
 
+  // Consume the state record immediately to prevent replay
+  await db.delete(krakenOauthStatesTable).where(eq(krakenOauthStatesTable.state, state));
+
   let krakenAccountId: string;
   if (!KRAKEN_CLIENT_ID || !KRAKEN_CLIENT_SECRET) {
     krakenAccountId = `demo_kraken_${walletAddress.slice(2, 8)}`;
   } else {
     try {
-      const tokenResponse = await fetch("https://api.kraken.com/0/private/GetWebSocketsToken", {
+      // Kraken OAuth 2.0 token endpoint
+      const tokenResponse = await fetch("https://www.kraken.com/oauth2/token", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -118,12 +122,27 @@ router.get("/auth/kraken/callback", async (req, res): Promise<void> => {
           redirect_uri: KRAKEN_REDIRECT_URI,
         }).toString(),
       });
-      const tokenData = await tokenResponse.json() as { access_token?: string; error?: string };
+      const tokenData = await tokenResponse.json() as { access_token?: string; error?: string; error_description?: string };
       if (tokenData.error || !tokenData.access_token) {
-        res.status(400).json({ error: "token_exchange_failed", message: "Failed to exchange code for token" });
+        res.status(400).json({ error: "token_exchange_failed", message: tokenData.error_description ?? "Failed to exchange code for token" });
         return;
       }
-      krakenAccountId = `kraken_${crypto.createHash("sha256").update(tokenData.access_token).digest("hex").slice(0, 16)}`;
+
+      // Use the token to fetch the Kraken account identifier
+      const accountResponse = await fetch("https://api.kraken.com/0/private/GetAccountBalance", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${tokenData.access_token}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      });
+      const accountData = await accountResponse.json() as { result?: object; error?: string[] };
+      if (accountData.error?.length) {
+        res.status(400).json({ error: "account_fetch_failed", message: "Failed to retrieve Kraken account info" });
+        return;
+      }
+      // Derive a stable opaque ID from the access token (Kraken doesn't expose a numeric user ID in basic OAuth)
+      krakenAccountId = `kraken_${crypto.createHash("sha256").update(tokenData.access_token).digest("hex").slice(0, 24)}`;
     } catch {
       res.status(400).json({ error: "token_exchange_failed", message: "Failed to communicate with Kraken" });
       return;
@@ -142,7 +161,7 @@ router.get("/auth/kraken/callback", async (req, res): Promise<void> => {
       set: { krakenAccountId, updatedAt: new Date() },
     });
 
-  const redirectUrl = `${FRONTEND_URL}?krakenLinked=true&walletAddress=${encodeURIComponent(walletAddress)}&krakenAccountId=${encodeURIComponent(krakenAccountId)}`;
+  const redirectUrl = `${FRONTEND_URL}?krakenLinked=true&walletAddress=${encodeURIComponent(walletAddress)}`;
   res.redirect(302, redirectUrl);
 });
 

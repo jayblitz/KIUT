@@ -51,7 +51,6 @@ export interface WalletSignMessage {
 
 export interface AttestInput {
   walletAddress: string;
-  krakenAccountId: string;
   /** Wallet signature proving address ownership */
   signature: string;
   nonce: string;

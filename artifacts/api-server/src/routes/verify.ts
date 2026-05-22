@@ -17,10 +17,6 @@ const INK_RPC_URL = "https://rpc-gel.inkonchain.com";
 const INK_EAS_CONTRACT = "0xC2679fBD37d54388Ce493F1DB75320D236e1815e";
 const INK_EXPLORER_URL = "https://explorer.inkonchain.com";
 
-function buildSignMessage(walletAddress: string, nonce: string, timestamp: string): string {
-  return `KIUT Verification\n\nWallet: ${walletAddress}\nNonce: ${nonce}\nTimestamp: ${timestamp}\n\nBy signing this message, you confirm ownership of this wallet address and authorize KIUT to verify your identity onchain.`;
-}
-
 function verifySignature(message: string, signature: string, expectedAddress: string): boolean {
   try {
     const recovered = ethers.verifyMessage(message, signature);
@@ -46,7 +42,7 @@ router.post("/verify/sign-message", async (req, res): Promise<void> => {
 
   const nonce = crypto.randomBytes(16).toString("hex");
   const timestamp = new Date().toISOString();
-  const message = buildSignMessage(walletAddress, nonce, timestamp);
+  const message = `KIUT Verification\n\nWallet: ${walletAddress}\nNonce: ${nonce}\nTimestamp: ${timestamp}\n\nBy signing this message, you confirm ownership of this wallet address and authorize KIUT to verify your identity onchain.`;
 
   await db.insert(noncesTable).values({
     walletAddress,
@@ -66,8 +62,9 @@ router.post("/verify/attest", async (req, res): Promise<void> => {
     return;
   }
 
-  const { walletAddress, krakenAccountId, signature, nonce } = parsed.data;
+  const { walletAddress, signature, nonce } = parsed.data;
 
+  // Verify nonce is valid and unused
   const nonceRecord = await db
     .select()
     .from(noncesTable)
@@ -84,25 +81,28 @@ router.post("/verify/attest", async (req, res): Promise<void> => {
     return;
   }
 
+  // Verify the wallet signature against the stored message
   const storedMessage = nonceRecord[0].message;
   if (!verifySignature(storedMessage, signature, walletAddress)) {
     res.status(401).json({ error: "invalid_signature", message: "Signature does not match the wallet address" });
     return;
   }
 
-  await db
-    .update(noncesTable)
-    .set({ used: true })
-    .where(eq(noncesTable.nonce, nonce));
-
-  const existing = await db
+  // Require that the Kraken linkage was established server-side via OAuth callback
+  const verification = await db
     .select()
     .from(verificationsTable)
     .where(eq(verificationsTable.walletAddress, walletAddress))
     .limit(1);
 
-  if (existing.length && existing[0].attestationUid) {
-    const v = existing[0];
+  if (!verification.length || !verification[0].krakenAccountId) {
+    res.status(400).json({ error: "kraken_not_linked", message: "Kraken account has not been linked for this wallet. Complete the Kraken OAuth flow first." });
+    return;
+  }
+
+  // Return existing attestation if already attested
+  if (verification[0].attestationUid) {
+    const v = verification[0];
     const result = CreateAttestationResponse.parse({
       success: true,
       attestationUid: v.attestationUid!,
@@ -112,6 +112,14 @@ router.post("/verify/attest", async (req, res): Promise<void> => {
     res.json(result);
     return;
   }
+
+  const krakenAccountId = verification[0].krakenAccountId;
+
+  // Consume the nonce atomically
+  await db
+    .update(noncesTable)
+    .set({ used: true })
+    .where(eq(noncesTable.nonce, nonce));
 
   let attestationUid: string;
   let txHash: string;
@@ -158,23 +166,13 @@ router.post("/verify/attest", async (req, res): Promise<void> => {
   }
 
   await db
-    .insert(verificationsTable)
-    .values({
-      walletAddress,
-      krakenAccountId,
+    .update(verificationsTable)
+    .set({
       attestationUid,
       attestedAt: new Date(),
-      hasMinted: false,
+      updatedAt: new Date(),
     })
-    .onConflictDoUpdate({
-      target: verificationsTable.walletAddress,
-      set: {
-        krakenAccountId,
-        attestationUid,
-        attestedAt: new Date(),
-        updatedAt: new Date(),
-      },
-    });
+    .where(eq(verificationsTable.walletAddress, walletAddress));
 
   const result = CreateAttestationResponse.parse({
     success: true,
