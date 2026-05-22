@@ -1,12 +1,12 @@
 import { Router, type IRouter } from "express";
 import crypto from "crypto";
+import { ethers } from "ethers";
 import { db, krakenOauthStatesTable, verificationsTable, noncesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
   StartKrakenAuthBody,
   StartKrakenAuthResponse,
   KrakenAuthCallbackQueryParams,
-  KrakenAuthCallbackResponse,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -15,6 +15,15 @@ const KRAKEN_CLIENT_ID = process.env.KRAKEN_CLIENT_ID ?? "";
 const KRAKEN_CLIENT_SECRET = process.env.KRAKEN_CLIENT_SECRET ?? "";
 const KRAKEN_REDIRECT_URI = process.env.KRAKEN_REDIRECT_URI ?? "";
 const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:3000";
+
+function verifySignature(message: string, signature: string, expectedAddress: string): boolean {
+  try {
+    const recovered = ethers.verifyMessage(message, signature);
+    return recovered.toLowerCase() === expectedAddress.toLowerCase();
+  } catch {
+    return false;
+  }
+}
 
 router.post("/auth/kraken/start", async (req, res): Promise<void> => {
   const parsed = StartKrakenAuthBody.safeParse(req.body);
@@ -33,6 +42,12 @@ router.post("/auth/kraken/start", async (req, res): Promise<void> => {
 
   if (!nonceRecord.length || nonceRecord[0].walletAddress !== walletAddress || nonceRecord[0].used) {
     res.status(400).json({ error: "invalid_nonce", message: "Nonce is invalid or already used" });
+    return;
+  }
+
+  const storedMessage = nonceRecord[0].message;
+  if (!verifySignature(storedMessage, signature, walletAddress)) {
+    res.status(401).json({ error: "invalid_signature", message: "Signature does not match the wallet address" });
     return;
   }
 
@@ -133,7 +148,7 @@ router.get("/auth/kraken/callback", async (req, res): Promise<void> => {
     });
 
   const redirectUrl = `${FRONTEND_URL}?krakenLinked=true&walletAddress=${encodeURIComponent(walletAddress)}&krakenAccountId=${encodeURIComponent(krakenAccountId)}`;
-  res.redirect(redirectUrl);
+  res.redirect(302, redirectUrl);
 });
 
 export default router;

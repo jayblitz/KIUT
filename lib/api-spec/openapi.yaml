@@ -62,7 +62,10 @@ paths:
       operationId: krakenAuthCallback
       tags: [auth]
       summary: Kraken OAuth callback
-      description: Exchanges the authorization code for account info and links the wallet
+      description: |
+        Exchanges the Kraken authorization code for account info and links the wallet.
+        On success, responds with a 302 redirect to the frontend with query params:
+        `?krakenLinked=true&walletAddress=<addr>&krakenAccountId=<id>`.
       parameters:
         - name: code
           in: query
@@ -75,12 +78,13 @@ paths:
           schema:
             type: string
       responses:
-        "200":
-          description: Kraken account linked
-          content:
-            application/json:
+        "302":
+          description: Redirect to frontend after successful Kraken link
+          headers:
+            Location:
               schema:
-                $ref: "#/components/schemas/KrakenLinkResult"
+                type: string
+              description: Frontend URL with krakenLinked=true query param
         "400":
           description: Invalid code or state
           content:
