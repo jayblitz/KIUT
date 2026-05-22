@@ -90,14 +90,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col relative">
-
       {/* ── Ambient background glows ─── */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div className="absolute top-[-15%] left-[-5%] w-[45%] h-[45%] rounded-full bg-primary/8 dark:bg-primary/10 blur-[140px]" />
         <div className="absolute bottom-[-20%] right-[-10%] w-[40%] h-[50%] rounded-full bg-primary/5 dark:bg-primary/6 blur-[120px]" />
         <div className="absolute top-[40%] left-[30%] w-[30%] h-[30%] rounded-full bg-violet-500/3 dark:bg-violet-500/5 blur-[100px]" />
       </div>
-
       {/* ── Header ─────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
@@ -132,7 +130,6 @@ export default function Home() {
           </div>
         </div>
       </header>
-
       <main className="flex-1 relative z-10">
 
         {/* ── Hero ──────────────────────────────────────────── */}
@@ -252,9 +249,9 @@ export default function Home() {
         <section id="demo" className="py-24 px-4 bg-muted/30 dark:bg-muted/20">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-12">
-              <span className="text-xs font-bold tracking-widest uppercase text-primary mb-3 block">See It Live</span>
-              <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Watch the Demo</h2>
-              <p className="text-muted-foreground">See the full verification flow in action.</p>
+              <span className="text-xs font-bold tracking-widest uppercase text-primary mb-3 block">Claim is LIVE</span>
+              <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Claim you unique SBT</h2>
+              <p className="text-muted-foreground">View the NFT in your wallet</p>
             </div>
 
             <div
@@ -288,9 +285,9 @@ export default function Home() {
         <section className="py-24 px-4 max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <span className="text-xs font-bold tracking-widest uppercase text-primary mb-3 block">Why KIUT</span>
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Built for Trust</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Built for Humanity</h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              Every design decision optimizes for privacy, security, and permanence.
+              Every owner, is a verified kraken &amp; Inkonchain user.
             </p>
           </div>
 
@@ -398,7 +395,6 @@ export default function Home() {
         </section>
 
       </main>
-
       {/* ── Footer ────────────────────────────────────────── */}
       <footer className="border-t border-border/50 bg-background/80 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-6 py-10">
