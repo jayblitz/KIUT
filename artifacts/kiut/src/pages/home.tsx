@@ -106,7 +106,7 @@ export default function Home() {
 
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
             <a href="#how-it-works" className="hover:text-foreground transition-colors duration-150">How It Works</a>
-            <a href="#demo" className="hover:text-foreground transition-colors duration-150">Demo</a>
+            <a href="#demo" className="hover:text-foreground transition-colors duration-150">SBT</a>
             <a href="#faq" className="hover:text-foreground transition-colors duration-150">FAQ</a>
             <a
               href="https://docs.inkonchain.com"
