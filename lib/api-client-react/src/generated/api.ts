@@ -28,7 +28,9 @@ import type {
   KrakenAuthStartInput,
   KrakenAuthUrlResult,
   MintNftInput,
-  MintResult,
+  MintAuthorization,
+  ConfirmMintInput,
+  ConfirmMintResult,
   NftStatus,
   WalletSignMessage,
   WalletSignRequest
@@ -440,9 +442,9 @@ export const getMintKiutNftUrl = () => {
  * Mints the KIUT soulbound NFT to the user's verified wallet address
  * @summary Mint KIUT soulbound NFT
  */
-export const mintKiutNft = async (mintNftInput: MintNftInput, options?: RequestInit): Promise<MintResult> => {
+export const mintKiutNft = async (mintNftInput: MintNftInput, options?: RequestInit): Promise<MintAuthorization> => {
 
-  return customFetch<MintResult>(getMintKiutNftUrl(),
+  return customFetch<MintAuthorization>(getMintKiutNftUrl(),
   {
     ...options,
     method: 'POST',
@@ -452,12 +454,24 @@ export const mintKiutNft = async (mintNftInput: MintNftInput, options?: RequestI
   }
 );}
 
+export const getConfirmNftMintUrl = () => `/api/nft/confirm`;
+
+export const confirmNftMint = async (confirmMintInput: ConfirmMintInput, options?: RequestInit): Promise<ConfirmMintResult> => {
+  return customFetch<ConfirmMintResult>(getConfirmNftMintUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(confirmMintInput),
+  });
+}
+
 
 
 
 export const getMintKiutNftMutationOptions = <TError = ErrorType<ApiError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mintKiutNft>>, TError,{data: BodyType<MintNftInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof mintKiutNft>>, TError,{data: BodyType<MintNftInput>}, TContext> => {
+// MintAuthorization return type is enforced by mintKiutNft above
 
 const mutationKey = ['mintKiutNft'];
 const {mutation: mutationOptions, request: requestOptions} = options ?

@@ -88,10 +88,19 @@ export const MintKiutNftBody = zod.object({
 })
 
 export const MintKiutNftResponse = zod.object({
+  "signature": zod.string().describe('Backend-signed EIP-191 authorisation for the minter wallet'),
+  "mintFee": zod.string().describe('Mint fee in wei as decimal string'),
+  "contractAddress": zod.string().describe('Deployed KiutSoulbound contract address')
+})
+
+export const ConfirmNftMintBody = zod.object({
+  "walletAddress": zod.string(),
+  "txHash": zod.string().describe('On-chain transaction hash of the mint'),
+  "tokenId": zod.string().describe('The minted token ID'),
+})
+
+export const ConfirmNftMintResponse = zod.object({
   "success": zod.boolean(),
-  "tokenId": zod.string().describe('The minted NFT token ID'),
-  "txHash": zod.string().describe('The mint transaction hash'),
-  "explorerUrl": zod.string().describe('Link to view the mint transaction on Inkonchain explorer')
 })
 
 
