@@ -79,7 +79,7 @@ function NftReceiptCard({
             <div className="text-2xl font-bold text-white tracking-tight mb-1">
               KIUT #{tokenId}
             </div>
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-2 mb-2">
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/20 border border-primary/30 text-primary text-xs font-medium">
                 Soulbound Token
               </span>
@@ -87,6 +87,13 @@ function NftReceiptCard({
                 ✓ Verified
               </span>
             </div>
+            <p className="text-white/50 text-xs">
+              Issued to{" "}
+              <span className="font-mono text-white/70">
+                {walletAddress.slice(0, 6)}…{walletAddress.slice(-4)}
+              </span>{" "}
+              on Inkonchain
+            </p>
           </div>
 
           {/* Info grid */}
@@ -316,7 +323,15 @@ export default function Wizard() {
       }
     }
 
-    if (!tokenIdStr) tokenIdStr = "1";
+    if (!tokenIdStr) {
+      setMintPhase("ready");
+      toast({
+        variant: "destructive",
+        title: "Could not read token ID",
+        description: "The mint transaction succeeded but the token ID could not be parsed. Please refresh the page.",
+      });
+      return;
+    }
     setMintTokenId(tokenIdStr);
 
     const txHash = txReceipt.transactionHash;

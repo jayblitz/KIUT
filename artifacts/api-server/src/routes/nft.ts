@@ -14,6 +14,13 @@ import {
 const router: IRouter = Router();
 
 const INK_EXPLORER_URL = "https://explorer.inkonchain.com";
+const INK_RPC = "https://rpc-gel.inkonchain.com";
+
+// Minimal ABI for on-chain reads / log parsing
+const KIUT_ABI = [
+  "function hasMinted(address) view returns (bool)",
+  "event Minted(address indexed to, uint256 indexed tokenId)",
+];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -30,13 +37,16 @@ function getContractAddress(): string {
 }
 
 function getMintFeeWei(): string {
-  // 0.0005 ETH – matches the contract's deployed mintFee
+  // 0.0005 ETH — matches the deployed contract's mintFee
   return ethers.parseEther("0.0005").toString();
 }
 
+function getProvider(): ethers.JsonRpcProvider {
+  return new ethers.JsonRpcProvider(INK_RPC);
+}
+
 // ─── POST /nft/mint ───────────────────────────────────────────────────────────
-// Verifies identity and returns a backend-signed authorisation.
-// The frontend calls the contract directly with this signature.
+// Returns a backend-signed authorization. The frontend calls contract.mint(sig).
 
 router.post("/nft/mint", async (req, res): Promise<void> => {
   const parsed = MintKiutNftBody.safeParse(req.body);
@@ -47,7 +57,7 @@ router.post("/nft/mint", async (req, res): Promise<void> => {
 
   const { walletAddress, attestationUid } = parsed.data;
 
-  // ── Verify identity ────────────────────────────────────────────────────────
+  // ── 1. DB identity check ──────────────────────────────────────────────────
   const rows = await db
     .select()
     .from(verificationsTable)
@@ -69,20 +79,42 @@ router.post("/nft/mint", async (req, res): Promise<void> => {
     return;
   }
 
+  // ── 2. On-chain double-mint guard ─────────────────────────────────────────
+  let contractAddress: string;
+  try {
+    contractAddress = getContractAddress();
+    const provider = getProvider();
+    const contract = new ethers.Contract(contractAddress, KIUT_ABI, provider);
+    const alreadyMinted: boolean = await contract.hasMinted(walletAddress);
+    if (alreadyMinted) {
+      // Sync DB state if it's behind
+      if (!verification.hasMinted) {
+        await db
+          .update(verificationsTable)
+          .set({ hasMinted: true, updatedAt: new Date() })
+          .where(eq(verificationsTable.walletAddress, walletAddress));
+      }
+      res.status(409).json({ error: "already_minted", message: "KIUT NFT has already been minted for this wallet" });
+      return;
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(503).json({ error: "chain_unavailable", message: `Could not reach Inkonchain: ${msg}` });
+    return;
+  }
+
+  // DB-level check as a second guard
   if (verification.hasMinted) {
     res.status(409).json({ error: "already_minted", message: "KIUT NFT has already been minted for this wallet" });
     return;
   }
 
-  // ── Issue backend signature ────────────────────────────────────────────────
+  // ── 3. Issue backend signature ────────────────────────────────────────────
+  // Signs keccak256(abi.encodePacked(contractAddress, walletAddress)) via EIP-191.
+  // Matches: MessageHashUtils.toEthSignedMessageHash(hash) + ECDSA.recover in the contract.
   let signature: string;
-  let contractAddress: string;
   try {
-    contractAddress = getContractAddress();
     const minterWallet = getMinterWallet();
-
-    // Sign keccak256(abi.encodePacked(contractAddress, walletAddress)) with EIP-191
-    // Matches the contract: MessageHashUtils.toEthSignedMessageHash(hash) + ECDSA.recover
     const hash = ethers.solidityPackedKeccak256(
       ["address", "address"],
       [contractAddress, walletAddress],
@@ -94,7 +126,7 @@ router.post("/nft/mint", async (req, res): Promise<void> => {
     return;
   }
 
-  // Also store the attestation UID if it was provided and differs
+  // Persist attestationUid if updated
   if (attestationUid && attestationUid !== verification.attestationUid) {
     await db
       .update(verificationsTable)
@@ -111,8 +143,8 @@ router.post("/nft/mint", async (req, res): Promise<void> => {
 });
 
 // ─── POST /nft/confirm ───────────────────────────────────────────────────────
-// Called by the frontend after the on-chain mint transaction confirms.
-// Records the mint in the database.
+// Called by the frontend after the on-chain tx is mined.
+// Verifies the tx receipt on-chain before recording state.
 
 router.post("/nft/confirm", async (req, res): Promise<void> => {
   const parsed = ConfirmNftMintBody.safeParse(req.body);
@@ -123,6 +155,7 @@ router.post("/nft/confirm", async (req, res): Promise<void> => {
 
   const { walletAddress, txHash, tokenId } = parsed.data;
 
+  // ── 1. Verify DB record exists ────────────────────────────────────────────
   const rows = await db
     .select()
     .from(verificationsTable)
@@ -134,16 +167,71 @@ router.post("/nft/confirm", async (req, res): Promise<void> => {
     return;
   }
 
+  // Idempotent — already confirmed
   if (rows[0].hasMinted) {
-    // Idempotent – already recorded
     res.json(ConfirmNftMintResponse.parse({ success: true }));
     return;
   }
 
+  // ── 2. Verify the transaction on-chain ───────────────────────────────────
+  let verifiedTokenId: string;
+  try {
+    const provider = getProvider();
+    const contractAddress = getContractAddress();
+
+    const receipt = await provider.getTransactionReceipt(txHash);
+    if (!receipt) {
+      res.status(400).json({ error: "tx_not_found", message: "Transaction not found on Inkonchain" });
+      return;
+    }
+    if (receipt.status !== 1) {
+      res.status(400).json({ error: "tx_failed", message: "Transaction reverted on-chain" });
+      return;
+    }
+
+    // Parse the Minted(address indexed to, uint256 indexed tokenId) event
+    const iface = new ethers.Interface(KIUT_ABI);
+    let foundTokenId: string | null = null;
+    let foundRecipient: string | null = null;
+
+    for (const log of receipt.logs) {
+      if (log.address.toLowerCase() !== contractAddress.toLowerCase()) continue;
+      try {
+        const parsed = iface.parseLog({ topics: log.topics as string[], data: log.data });
+        if (parsed && parsed.name === "Minted") {
+          foundRecipient = parsed.args.to as string;
+          foundTokenId = (parsed.args.tokenId as bigint).toString();
+          break;
+        }
+      } catch {
+        // Not a Minted log — continue
+      }
+    }
+
+    if (!foundTokenId || !foundRecipient) {
+      res.status(400).json({ error: "no_mint_event", message: "Transaction does not contain a KIUT Minted event" });
+      return;
+    }
+
+    // Confirm the mint was to the expected wallet
+    if (foundRecipient.toLowerCase() !== walletAddress.toLowerCase()) {
+      res.status(400).json({ error: "recipient_mismatch", message: "Minted token recipient does not match wallet" });
+      return;
+    }
+
+    // Use on-chain tokenId (ignore client-supplied value)
+    verifiedTokenId = foundTokenId;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(503).json({ error: "chain_unavailable", message: `Could not verify on Inkonchain: ${msg}` });
+    return;
+  }
+
+  // ── 3. Record in DB ───────────────────────────────────────────────────────
   await db
     .update(verificationsTable)
     .set({
-      nftTokenId: tokenId,
+      nftTokenId: verifiedTokenId,
       nftTxHash: txHash,
       nftMintedAt: new Date(),
       hasMinted: true,
