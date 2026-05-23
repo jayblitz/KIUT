@@ -7,7 +7,7 @@
     "compile": "hardhat compile",
     "deploy": "hardhat run scripts/deploy.ts --network inkonchain",
     "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
-    "verify": "hardhat run scripts/verify.ts --network inkonchain"
+    "verify": "HARDHAT_DISABLE_TELEMETRY_PROMPT=true hardhat run scripts/verify.ts --network inkonchain"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ethers": "^3.0.8",
