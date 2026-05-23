@@ -233,17 +233,35 @@ router.get("/auth/kraken/callback", async (req, res): Promise<void> => {
     return;
   }
 
-  await db
-    .insert(verificationsTable)
-    .values({
-      walletAddress,
-      krakenAccountId,
-      hasMinted: false,
-    })
-    .onConflictDoUpdate({
-      target: verificationsTable.walletAddress,
-      set: { krakenAccountId, updatedAt: new Date() },
-    });
+  try {
+    await db
+      .insert(verificationsTable)
+      .values({
+        walletAddress,
+        krakenAccountId,
+        hasMinted: false,
+      })
+      .onConflictDoUpdate({
+        target: verificationsTable.walletAddress,
+        set: { krakenAccountId, updatedAt: new Date() },
+      });
+  } catch (err: unknown) {
+    // Handle concurrent unique-constraint violation on kraken_account_id:
+    // If two requests race past the existingLink check simultaneously, the DB
+    // unique constraint fires. Convert that to a deterministic already_linked
+    // redirect rather than letting a raw 500 surface to the user.
+    const isUniqueViolation =
+      err instanceof Error &&
+      (err.message.includes("verifications_kraken_account_id_unique") ||
+        err.message.includes("unique constraint") ||
+        (err as { code?: string }).code === "23505");
+    if (isUniqueViolation) {
+      const redirectUrl = `${FRONTEND_URL}?krakenError=already_linked&walletAddress=${encodeURIComponent(walletAddress)}`;
+      res.redirect(302, redirectUrl);
+      return;
+    }
+    throw err;
+  }
 
   const redirectUrl = `${FRONTEND_URL}?krakenLinked=true&walletAddress=${encodeURIComponent(walletAddress)}`;
   res.redirect(302, redirectUrl);
