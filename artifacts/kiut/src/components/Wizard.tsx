@@ -661,43 +661,59 @@ export default function Wizard() {
                 </h2>
 
                 {!isMinting && (
-                  <div className="text-sm text-muted-foreground space-y-1.5 bg-muted/40 rounded-lg p-3 sm:p-4 text-left w-full max-w-sm mx-auto">
-                    <p className="flex items-center justify-between gap-2 flex-wrap">Wallet: <span className="font-mono text-foreground break-all">{address?.slice(0, 6)}…{address?.slice(-4)}</span></p>
-                    <p className="flex items-center justify-between gap-2 flex-wrap">Attestation: <span className="font-mono text-foreground break-all">{(attestationUid || nftStatus?.attestationUid || "–").slice(0, 12)}…</span></p>
-                    <p className="flex items-center justify-between gap-2 flex-wrap">Chain: <span className="text-foreground">Inkonchain (57073)</span></p>
-                    <p className="flex items-center justify-between gap-2 flex-wrap">
-                      <span className="flex items-center gap-1">
-                        Mint fee
-                        <button
-                          type="button"
-                          onClick={() => refetchMintFee()}
-                          title={mintFeeUpdatedAt ? `Last updated ${new Date(mintFeeUpdatedAt).toLocaleTimeString()}` : "Refresh fee"}
-                          className="text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
-                            <path fillRule="evenodd" d="M13.836 2.477a.75.75 0 0 1 .75.75v3.182a.75.75 0 0 1-.75.75h-3.182a.75.75 0 0 1 0-1.5h1.37l-.84-.841a4.5 4.5 0 0 0-7.08.932.75.75 0 0 1-1.3-.75 6 6 0 0 1 9.46-1.242l.842.84V3.227a.75.75 0 0 1 .75-.75Zm-.911 7.5A.75.75 0 0 1 13.199 11a6 6 0 0 1-9.46 1.243l-.842-.84v1.371a.75.75 0 0 1-1.5 0V9.591a.75.75 0 0 1 .75-.75H5.33a.75.75 0 0 1 0 1.5H3.96l.841.841a4.5 4.5 0 0 0 7.08-.932.75.75 0 0 1 1.044-.273Z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                      </span>
-                      <span className="text-foreground">
-                        {liveMintFee !== undefined
-                          ? `${formatEther(liveMintFee)} ETH`
-                          : <span className="inline-block w-20 h-3.5 bg-muted-foreground/20 rounded animate-pulse align-middle" />}
-                      </span>
-                    </p>
-                    <p className="flex items-center justify-between gap-2 flex-wrap">
-                      Est. gas:{" "}
-                      <span className="text-foreground">~{formatEther(GAS_ESTIMATE_WEI)} ETH</span>
-                    </p>
-                    <p className="flex items-center justify-between gap-2 flex-wrap">
-                      Your balance:{" "}
-                      <span className={hasInsufficientBalance ? "text-destructive font-medium" : "text-foreground"}>
-                        {walletBalance !== undefined
-                          ? `${parseFloat(formatEther(walletBalance.value)).toFixed(6)} ETH`
-                          : <span className="inline-block w-24 h-3.5 bg-muted-foreground/20 rounded animate-pulse align-middle" />}
-                      </span>
-                    </p>
-                    <p className="flex items-center justify-between gap-2 flex-wrap">Type: <span className="text-foreground">Soulbound · Non-transferable</span></p>
+                  <div className="space-y-3 w-full max-w-sm mx-auto">
+                    {/* Wallet metadata */}
+                    <div className="text-sm text-muted-foreground space-y-1.5 bg-muted/40 rounded-lg p-3 sm:p-4 text-left">
+                      <p className="flex items-center justify-between gap-2 flex-wrap">Wallet: <span className="font-mono text-foreground break-all">{address?.slice(0, 6)}…{address?.slice(-4)}</span></p>
+                      <p className="flex items-center justify-between gap-2 flex-wrap">Attestation: <span className="font-mono text-foreground break-all">{(attestationUid || nftStatus?.attestationUid || "–").slice(0, 12)}…</span></p>
+                      <p className="flex items-center justify-between gap-2 flex-wrap">Chain: <span className="text-foreground">Inkonchain (57073)</span></p>
+                      <p className="flex items-center justify-between gap-2 flex-wrap">Type: <span className="text-foreground">Soulbound · Non-transferable</span></p>
+                    </div>
+
+                    {/* Cost summary card */}
+                    <div className="text-sm rounded-lg border border-border bg-background p-3 sm:p-4 text-left space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Cost Summary</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          Mint fee
+                          <button
+                            type="button"
+                            onClick={() => refetchMintFee()}
+                            title={mintFeeUpdatedAt ? `Last updated ${new Date(mintFeeUpdatedAt).toLocaleTimeString()}` : "Refresh fee"}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
+                              <path fillRule="evenodd" d="M13.836 2.477a.75.75 0 0 1 .75.75v3.182a.75.75 0 0 1-.75.75h-3.182a.75.75 0 0 1 0-1.5h1.37l-.84-.841a4.5 4.5 0 0 0-7.08.932.75.75 0 0 1-1.3-.75 6 6 0 0 1 9.46-1.242l.842.84V3.227a.75.75 0 0 1 .75-.75Zm-.911 7.5A.75.75 0 0 1 13.199 11a6 6 0 0 1-9.46 1.243l-.842-.84v1.371a.75.75 0 0 1-1.5 0V9.591a.75.75 0 0 1 .75-.75H5.33a.75.75 0 0 1 0 1.5H3.96l.841.841a4.5 4.5 0 0 0 7.08-.932.75.75 0 0 1 1.044-.273Z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        </span>
+                        <span className="text-foreground">
+                          {liveMintFee !== undefined
+                            ? `${formatEther(liveMintFee)} ETH`
+                            : <span className="inline-block w-20 h-3.5 bg-muted-foreground/20 rounded animate-pulse align-middle" />}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 text-muted-foreground">
+                        <span>Est. gas</span>
+                        <span className="text-foreground">~{formatEther(GAS_ESTIMATE_WEI)} ETH</span>
+                      </div>
+                      <div className="border-t border-border pt-2 mt-1 flex items-center justify-between gap-2">
+                        <span className="font-semibold text-foreground">Total</span>
+                        <span className={`font-semibold tabular-nums ${hasInsufficientBalance ? "text-destructive" : "text-foreground"}`}>
+                          {totalNeeded !== undefined
+                            ? `${formatEther(totalNeeded)} ETH`
+                            : <span className="inline-block w-24 h-3.5 bg-muted-foreground/20 rounded animate-pulse align-middle" />}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 text-muted-foreground text-xs pt-0.5">
+                        <span>Your balance</span>
+                        <span className={hasInsufficientBalance ? "text-destructive font-medium" : "text-foreground"}>
+                          {walletBalance !== undefined
+                            ? `${parseFloat(formatEther(walletBalance.value)).toFixed(6)} ETH`
+                            : <span className="inline-block w-24 h-3 bg-muted-foreground/20 rounded animate-pulse align-middle" />}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 )}
 
