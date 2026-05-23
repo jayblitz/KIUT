@@ -242,7 +242,7 @@ export default function Home() {
               <video
                 ref={videoRef}
                 src="/kiut-demo.mp4"
-                className="w-full aspect-video object-cover"
+                className="w-full"
                 loop
                 playsInline
                 onPlay={() => setVideoPlaying(true)}
