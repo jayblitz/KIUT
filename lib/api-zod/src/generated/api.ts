@@ -105,6 +105,24 @@ export const ConfirmNftMintResponse = zod.object({
 
 
 /**
+ * Returns ERC-721 display metadata for a minted KIUT token
+ * @summary Get NFT metadata
+ */
+export const GetNftMetadataParams = zod.object({
+  "tokenId": zod.coerce.string()
+})
+
+export const GetNftMetadataResponse = zod.object({
+  "name": zod.string(),
+  "description": zod.string(),
+  "image": zod.string(),
+  "tokenId": zod.string(),
+  "explorerUrl": zod.string(),
+  "contractAddress": zod.string(),
+})
+
+
+/**
  * Returns whether the wallet has minted a KIUT NFT and related details
  * @summary Get NFT mint status
  */

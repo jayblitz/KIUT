@@ -31,6 +31,7 @@ import type {
   MintAuthorization,
   ConfirmMintInput,
   ConfirmMintResult,
+  NftMetadata,
   NftStatus,
   WalletSignMessage,
   WalletSignRequest
@@ -513,6 +514,48 @@ export const useMintKiutNft = <TError = ErrorType<ApiError>,
       > => {
       return useMutation(getMintKiutNftMutationOptions(options));
     }
+
+export const getGetNftMetadataUrl = (tokenId: string) => {
+  return `/api/nft/metadata/${tokenId}`;
+};
+
+export const getNftMetadata = async (tokenId: string, options?: RequestInit): Promise<NftMetadata> => {
+  return customFetch<NftMetadata>(getGetNftMetadataUrl(tokenId), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetNftMetadataQueryKey = (tokenId: string) => {
+  return [`/api/nft/metadata/${tokenId}`] as const;
+};
+
+export const getGetNftMetadataQueryOptions = <TData = Awaited<ReturnType<typeof getNftMetadata>>, TError = ErrorType<ApiError>>(
+  tokenId: string,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getNftMetadata>>, TError, TData>; request?: SecondParameter<typeof customFetch> },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getGetNftMetadataQueryKey(tokenId);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getNftMetadata>>> = ({ signal }) =>
+    getNftMetadata(tokenId, { signal, ...requestOptions });
+  return { queryKey, queryFn, enabled: !!(tokenId), ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getNftMetadata>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetNftMetadataQueryResult = NonNullable<Awaited<ReturnType<typeof getNftMetadata>>>;
+export type GetNftMetadataQueryError = ErrorType<ApiError>;
+
+export function useGetNftMetadata<TData = Awaited<ReturnType<typeof getNftMetadata>>, TError = ErrorType<ApiError>>(
+  tokenId: string,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getNftMetadata>>, TError, TData>; request?: SecondParameter<typeof customFetch> },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetNftMetadataQueryOptions(tokenId, options);
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 export const getGetNftStatusUrl = (walletAddress: string,) => {
 

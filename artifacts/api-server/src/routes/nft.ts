@@ -260,6 +260,39 @@ router.post("/nft/confirm", async (req, res): Promise<void> => {
   res.json(ConfirmNftMintResponse.parse({ success: true }));
 });
 
+// ─── GET /nft/metadata/:tokenId ──────────────────────────────────────────────
+
+router.get("/nft/metadata/:tokenId", async (req, res): Promise<void> => {
+  const tokenId = req.params.tokenId;
+
+  if (!tokenId || !/^\d+$/.test(tokenId)) {
+    res.status(400).json({ error: "invalid_token_id", message: "Invalid token ID — must be a non-negative integer" });
+    return;
+  }
+
+  let contractAddress: string;
+  try {
+    contractAddress = getContractAddress();
+  } catch {
+    res.status(503).json({ error: "config_missing", message: "Contract address not configured" });
+    return;
+  }
+
+  const origin = `${req.protocol}://${req.get("host")}`;
+  const imageUrl = `${origin}/kiut-badge.jpeg`;
+  const explorerUrl = `${INK_EXPLORER_URL}/token/${contractAddress}/instance/${tokenId}`;
+
+  res.json({
+    name: `KIUT #${tokenId}`,
+    description:
+      "Kraken Identity Unified Token — a soulbound NFT certifying you as a verified human on Inkonchain.",
+    image: imageUrl,
+    tokenId,
+    explorerUrl,
+    contractAddress,
+  });
+});
+
 // ─── GET /nft/status/:walletAddress ─────────────────────────────────────────
 
 router.get("/nft/status/:walletAddress", async (req, res): Promise<void> => {

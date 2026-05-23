@@ -118,6 +118,16 @@ export interface NftStatus {
   mintedAt?: string | null;
 }
 
+export interface NftMetadata {
+  name: string;
+  description: string;
+  image: string;
+  tokenId: string;
+  /** Direct link to the NFT instance on the Inkonchain explorer */
+  explorerUrl: string;
+  contractAddress: string;
+}
+
 export type KrakenAuthCallbackParams = {
 code: string;
 state: string;

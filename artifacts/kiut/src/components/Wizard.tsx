@@ -9,7 +9,9 @@ import {
   useCreateAttestation,
   useMintKiutNft,
   useGetNftStatus,
+  useGetNftMetadata,
   getGetNftStatusQueryKey,
+  getGetNftMetadataQueryKey,
   confirmNftMint,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
@@ -44,6 +46,19 @@ function NftReceiptCard({
   const [copied, setCopied] = useState<string | null>(null);
   const INK_EXPLORER = "https://explorer.inkonchain.com";
 
+  const hasValidTokenId = Boolean(tokenId) && tokenId !== "–";
+
+  const { data: metadata } = useGetNftMetadata(tokenId, {
+    query: { enabled: hasValidTokenId, queryKey: getGetNftMetadataQueryKey(tokenId) },
+  });
+
+  const resolvedContract = contractAddress || metadata?.contractAddress || "";
+  const nftUrl = metadata?.explorerUrl ?? (resolvedContract
+    ? `${INK_EXPLORER}/token/${resolvedContract}/instance/${tokenId}`
+    : null);
+  const badgeImage = metadata?.image ?? "/kiut-badge.jpeg";
+  const badgeName = metadata?.name ?? `KIUT #${tokenId}`;
+
   function copy(text: string, key: string) {
     navigator.clipboard.writeText(text).then(() => {
       setCopied(key);
@@ -52,6 +67,7 @@ function NftReceiptCard({
   }
 
   function shortAddr(addr: string) {
+    if (!addr) return "–";
     return `${addr.slice(0, 8)}…${addr.slice(-6)}`;
   }
 
@@ -68,16 +84,17 @@ function NftReceiptCard({
           <div className="relative">
             <div className="absolute inset-0 rounded-2xl bg-primary/40 blur-2xl scale-125" />
             <img
-              src="/kiut-badge.jpeg"
+              src={badgeImage}
               alt="KIUT Badge"
               className="relative w-24 h-24 rounded-2xl border-2 border-primary/50 shadow-2xl"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/kiut-badge.jpeg"; }}
             />
           </div>
 
           {/* Title */}
           <div className="text-center">
             <div className="text-2xl font-bold text-white tracking-tight mb-1">
-              KIUT #{tokenId}
+              {badgeName}
             </div>
             <div className="flex items-center justify-center gap-2 mb-2">
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/20 border border-primary/30 text-primary text-xs font-medium">
@@ -109,53 +126,82 @@ function NftReceiptCard({
               badge="Chain 57073"
               copyable={false}
             />
-            <InfoCell
-              label="Contract"
-              value={shortAddr(contractAddress)}
-              onCopy={() => copy(contractAddress, "contract")}
-              copied={copied === "contract"}
-              link={`${INK_EXPLORER}/address/${contractAddress}`}
-              fullSpan={false}
-            />
-            <InfoCell
-              label="Wallet"
-              value={shortAddr(walletAddress)}
-              onCopy={() => copy(walletAddress, "wallet")}
-              copied={copied === "wallet"}
-              link={`${INK_EXPLORER}/address/${walletAddress}`}
-              fullSpan={false}
-            />
+            {resolvedContract && (
+              <>
+                <InfoCell
+                  label="Contract"
+                  value={shortAddr(resolvedContract)}
+                  onCopy={() => copy(resolvedContract, "contract")}
+                  copied={copied === "contract"}
+                  link={`${INK_EXPLORER}/address/${resolvedContract}`}
+                  fullSpan={false}
+                />
+                <InfoCell
+                  label="Wallet"
+                  value={shortAddr(walletAddress)}
+                  onCopy={() => copy(walletAddress, "wallet")}
+                  copied={copied === "wallet"}
+                  link={`${INK_EXPLORER}/address/${walletAddress}`}
+                  fullSpan={false}
+                />
+              </>
+            )}
+            {!resolvedContract && (
+              <InfoCell
+                label="Wallet"
+                value={shortAddr(walletAddress)}
+                onCopy={() => copy(walletAddress, "wallet")}
+                copied={copied === "wallet"}
+                link={`${INK_EXPLORER}/address/${walletAddress}`}
+                fullSpan={true}
+              />
+            )}
           </div>
 
-          {/* View on explorer */}
-          <a
-            href={`${INK_EXPLORER}/tx/${txHash}`}
-            target="_blank"
-            rel="noreferrer"
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-white/10 border border-white/20 text-white/80 hover:bg-white/15 hover:text-white transition-all duration-200 text-sm font-medium"
-          >
-            View Mint Transaction <ExternalLink className="w-3.5 h-3.5" />
-          </a>
+          {/* View NFT on explorer — direct NFT instance link */}
+          {nftUrl && (
+            <a
+              href={nftUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 hover:border-primary/50 transition-all duration-200 text-sm font-medium"
+            >
+              View NFT on Explorer <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          )}
+
+          {/* View mint transaction */}
+          {txHash && (
+            <a
+              href={`${INK_EXPLORER}/tx/${txHash}`}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-white/10 border border-white/20 text-white/80 hover:bg-white/15 hover:text-white transition-all duration-200 text-sm font-medium"
+            >
+              View Mint Transaction <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          )}
 
           {/* Share / Copy row */}
           <div className="w-full grid grid-cols-2 gap-2.5">
             {/* Share on X */}
             <a
               href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                `I just got my KIUT soulbound NFT — verified human on Inkonchain. Token #${tokenId} ${INK_EXPLORER}/token/${contractAddress}/instance/${tokenId}`
+                `I just got my KIUT soulbound NFT — verified human on Inkonchain. Token #${tokenId}${nftUrl ? ` ${nftUrl}` : ""}`
               )}`}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 hover:border-primary/50 transition-all duration-200 text-sm font-medium"
+              className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-white/10 border border-white/20 text-white/80 hover:bg-white/15 hover:text-white transition-all duration-200 text-sm font-medium"
             >
               <Twitter className="w-3.5 h-3.5" />
               Share on X
             </a>
 
-            {/* Copy link */}
+            {/* Copy NFT link */}
             <button
-              onClick={() => copy(`${INK_EXPLORER}/token/${contractAddress}/instance/${tokenId}`, "link")}
-              className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-white/10 border border-white/20 text-white/80 hover:bg-white/15 hover:text-white transition-all duration-200 text-sm font-medium"
+              onClick={() => nftUrl && copy(nftUrl, "link")}
+              disabled={!nftUrl}
+              className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-white/10 border border-white/20 text-white/80 hover:bg-white/15 hover:text-white transition-all duration-200 text-sm font-medium disabled:opacity-50"
             >
               {copied === "link" ? (
                 <>
@@ -519,7 +565,7 @@ export default function Wizard() {
 
   const displayTokenId = mintTokenId || nftStatus?.tokenId || "–";
   const displayTxHash = mintTxHash || nftStatus?.txHash || "";
-  const displayContract = mintContractAddress || "";
+  const displayContract = mintContractAddress || NFT_CONTRACT || "";
   const displayWallet = address || "";
 
   const stepLabels = ["Connect Wallet", "Sign Message", "Link Kraken", "Mint NFT"];
