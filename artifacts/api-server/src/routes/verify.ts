@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import crypto from "crypto";
 import { ethers } from "ethers";
 import { db, noncesTable, verificationsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   GetSignMessageBody,
   GetSignMessageResponse,
@@ -64,7 +64,7 @@ router.post("/verify/attest", async (req, res): Promise<void> => {
 
   const { walletAddress, signature, nonce } = parsed.data;
 
-  // Verify nonce is valid and unused
+  // ── 1. Load nonce record (for message + wallet validation) ───────────────
   const nonceRecord = await db
     .select()
     .from(noncesTable)
@@ -81,14 +81,14 @@ router.post("/verify/attest", async (req, res): Promise<void> => {
     return;
   }
 
-  // Verify the wallet signature against the stored message
+  // ── 2. Verify the wallet signature ────────────────────────────────────────
   const storedMessage = nonceRecord[0].message;
   if (!verifySignature(storedMessage, signature, walletAddress)) {
     res.status(401).json({ error: "invalid_signature", message: "Signature does not match the wallet address" });
     return;
   }
 
-  // Require that the Kraken linkage was established server-side via OAuth callback
+  // ── 3. Require Kraken linkage ─────────────────────────────────────────────
   const verification = await db
     .select()
     .from(verificationsTable)
@@ -100,7 +100,7 @@ router.post("/verify/attest", async (req, res): Promise<void> => {
     return;
   }
 
-  // Return existing attestation if already attested
+  // ── 4. Return early if already attested (idempotent) ─────────────────────
   if (verification[0].attestationUid) {
     const v = verification[0];
     const result = CreateAttestationResponse.parse({
@@ -113,14 +113,22 @@ router.post("/verify/attest", async (req, res): Promise<void> => {
     return;
   }
 
-  const krakenAccountId = verification[0].krakenAccountId;
-
-  // Consume the nonce atomically
-  await db
+  // ── 5. Atomically consume the nonce (race-condition guard) ────────────────
+  // UPDATE WHERE nonce = ? AND used = false — only one concurrent request wins.
+  // If another concurrent request consumed it first, consumed.length === 0.
+  const consumed = await db
     .update(noncesTable)
     .set({ used: true })
-    .where(eq(noncesTable.nonce, nonce));
+    .where(and(eq(noncesTable.nonce, nonce), eq(noncesTable.used, false)))
+    .returning({ id: noncesTable.id });
 
+  if (!consumed.length) {
+    res.status(409).json({ error: "nonce_used", message: "Nonce has already been consumed by a concurrent request" });
+    return;
+  }
+
+  // ── 6. Issue EAS attestation ──────────────────────────────────────────────
+  const krakenAccountId = verification[0].krakenAccountId;
   let attestationUid: string;
   let txHash: string;
 
@@ -165,6 +173,7 @@ router.post("/verify/attest", async (req, res): Promise<void> => {
     }
   }
 
+  // ── 7. Record attestation ─────────────────────────────────────────────────
   await db
     .update(verificationsTable)
     .set({

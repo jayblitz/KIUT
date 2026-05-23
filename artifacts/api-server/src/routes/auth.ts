@@ -16,6 +16,10 @@ const KRAKEN_CLIENT_SECRET = process.env.KRAKEN_CLIENT_SECRET ?? "";
 const KRAKEN_REDIRECT_URI = process.env.KRAKEN_REDIRECT_URI ?? "";
 const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:3000";
 
+// Demo mode is only permitted in non-production environments.
+// In production, missing Kraken credentials must fail closed.
+const IS_DEMO_MODE = !KRAKEN_CLIENT_ID && process.env.NODE_ENV !== "production";
+
 function verifySignature(message: string, signature: string, expectedAddress: string): boolean {
   try {
     const recovered = ethers.verifyMessage(message, signature);
@@ -26,6 +30,12 @@ function verifySignature(message: string, signature: string, expectedAddress: st
 }
 
 router.post("/auth/kraken/start", async (req, res): Promise<void> => {
+  // Fail closed if Kraken is not configured in production
+  if (!KRAKEN_CLIENT_ID && !IS_DEMO_MODE) {
+    res.status(503).json({ error: "not_configured", message: "Kraken OAuth is not configured on this server" });
+    return;
+  }
+
   const parsed = StartKrakenAuthBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "invalid_request", message: parsed.error.message });
@@ -61,8 +71,8 @@ router.post("/auth/kraken/start", async (req, res): Promise<void> => {
   });
 
   let authUrl: string;
-  if (!KRAKEN_CLIENT_ID) {
-    // Demo mode: create the verifications linkage server-side right away
+  if (IS_DEMO_MODE) {
+    // Demo mode (development only): skip Kraken OAuth, create linkage immediately
     const demoKrakenAccountId = `demo_kraken_${walletAddress.slice(2, 8)}`;
     await db
       .insert(verificationsTable)
@@ -88,6 +98,12 @@ router.post("/auth/kraken/start", async (req, res): Promise<void> => {
 });
 
 router.get("/auth/kraken/callback", async (req, res): Promise<void> => {
+  // Fail closed if Kraken is not configured in production
+  if (!KRAKEN_CLIENT_ID && !IS_DEMO_MODE) {
+    res.status(503).json({ error: "not_configured", message: "Kraken OAuth is not configured on this server" });
+    return;
+  }
+
   const parsed = KrakenAuthCallbackQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: "invalid_request", message: parsed.error.message });
@@ -113,7 +129,7 @@ router.get("/auth/kraken/callback", async (req, res): Promise<void> => {
   await db.delete(krakenOauthStatesTable).where(eq(krakenOauthStatesTable.state, state));
 
   let krakenAccountId: string;
-  if (!KRAKEN_CLIENT_ID || !KRAKEN_CLIENT_SECRET) {
+  if (IS_DEMO_MODE) {
     krakenAccountId = `demo_kraken_${walletAddress.slice(2, 8)}`;
   } else {
     try {
@@ -156,6 +172,23 @@ router.get("/auth/kraken/callback", async (req, res): Promise<void> => {
       res.status(400).json({ error: "token_exchange_failed", message: "Failed to communicate with Kraken" });
       return;
     }
+  }
+
+  // ── One-account-per-wallet enforcement ────────────────────────────────────
+  // Reject if this Kraken identity is already linked to a different wallet.
+  // This enforces the "1 KIUT per Kraken account" invariant at the application layer.
+  // The DB unique constraint on kraken_account_id provides a second layer of enforcement.
+  const existingLink = await db
+    .select({ walletAddress: verificationsTable.walletAddress })
+    .from(verificationsTable)
+    .where(eq(verificationsTable.krakenAccountId, krakenAccountId))
+    .limit(1);
+
+  if (existingLink.length && existingLink[0].walletAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+    // This Kraken account is already bound to another wallet — reject silently via redirect
+    const redirectUrl = `${FRONTEND_URL}?krakenError=already_linked&walletAddress=${encodeURIComponent(walletAddress)}`;
+    res.redirect(302, redirectUrl);
+    return;
   }
 
   await db
