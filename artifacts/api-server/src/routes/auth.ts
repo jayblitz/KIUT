@@ -153,7 +153,51 @@ router.get("/auth/kraken/callback", async (req, res): Promise<void> => {
         return;
       }
 
-      // Use the token to fetch the Kraken account identifier
+      // ── Resolve a stable Kraken user identifier ─────────────────────────
+      // Strategy 1: OIDC userinfo endpoint (standard, most reliable)
+      let stableSub: string | null = null;
+      try {
+        const userinfoResponse = await fetch("https://www.kraken.com/oauth2/userinfo", {
+          headers: { Authorization: `Bearer ${tokenData.access_token}` },
+        });
+        if (userinfoResponse.ok) {
+          const userinfo = await userinfoResponse.json() as { sub?: string };
+          if (typeof userinfo.sub === "string" && userinfo.sub) {
+            stableSub = userinfo.sub;
+          }
+        }
+      } catch {
+        // userinfo fetch failed — fall through to JWT decoding
+      }
+
+      // Strategy 2: Decode JWT access token to extract the sub claim
+      if (!stableSub) {
+        try {
+          const parts = tokenData.access_token.split(".");
+          if (parts.length === 3) {
+            const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")) as { sub?: string };
+            if (typeof payload.sub === "string" && payload.sub) {
+              stableSub = payload.sub;
+            }
+          }
+        } catch {
+          // JWT decode failed
+        }
+      }
+
+      // If we still do not have a stable identifier, fail closed.
+      // We must not fall back to access-token hashing — it is not stable across re-authorisations.
+      if (!stableSub) {
+        res.status(400).json({
+          error: "identity_unavailable",
+          message: "Could not retrieve a stable Kraken account identifier. Please try again.",
+        });
+        return;
+      }
+
+      krakenAccountId = `kraken_${stableSub}`;
+
+      // Verify the token is valid against Kraken's API (proves the OAuth succeeded)
       const accountResponse = await fetch("https://api.kraken.com/0/private/GetAccountBalance", {
         method: "POST",
         headers: {
@@ -163,11 +207,9 @@ router.get("/auth/kraken/callback", async (req, res): Promise<void> => {
       });
       const accountData = await accountResponse.json() as { result?: object; error?: string[] };
       if (accountData.error?.length) {
-        res.status(400).json({ error: "account_fetch_failed", message: "Failed to retrieve Kraken account info" });
+        res.status(400).json({ error: "account_fetch_failed", message: "Failed to verify Kraken account" });
         return;
       }
-      // Derive a stable opaque ID from the access token (Kraken doesn't expose a numeric user ID in basic OAuth)
-      krakenAccountId = `kraken_${crypto.createHash("sha256").update(tokenData.access_token).digest("hex").slice(0, 24)}`;
     } catch {
       res.status(400).json({ error: "token_exchange_failed", message: "Failed to communicate with Kraken" });
       return;
