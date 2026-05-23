@@ -11,6 +11,7 @@ import {
   GetNftStatusParams,
   GetNftStatusResponse,
 } from "@workspace/api-zod";
+import { generateBadgeSvg } from "../lib/badge-svg";
 
 const router: IRouter = Router();
 
@@ -260,6 +261,23 @@ router.post("/nft/confirm", async (req, res): Promise<void> => {
   res.json(ConfirmNftMintResponse.parse({ success: true }));
 });
 
+// ─── GET /nft/badge/:tokenId ─────────────────────────────────────────────────
+// Serves the unique per-token SVG badge image under the /api prefix.
+// This path is reachable from the browser via the Replit proxy (/api/nft/badge/:tokenId).
+
+router.get("/nft/badge/:tokenId", (req, res): void => {
+  const tokenId = parseInt(req.params.tokenId, 10);
+  if (isNaN(tokenId) || tokenId < 1) {
+    res.status(400).send("Invalid token ID");
+    return;
+  }
+
+  const svg = generateBadgeSvg(tokenId);
+  res.setHeader("Content-Type", "image/svg+xml");
+  res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  res.send(svg);
+});
+
 // ─── GET /nft/metadata/:tokenId ──────────────────────────────────────────────
 
 router.get("/nft/metadata/:tokenId", async (req, res): Promise<void> => {
@@ -279,7 +297,7 @@ router.get("/nft/metadata/:tokenId", async (req, res): Promise<void> => {
   }
 
   const origin = `${req.protocol}://${req.get("host")}`;
-  const imageUrl = `${origin}/kiut-badge.jpeg`;
+  const imageUrl = `${origin}/api/nft/badge/${tokenId}`;
   const explorerUrl = `${INK_EXPLORER_URL}/token/${contractAddress}/instance/${tokenId}`;
 
   res.json({
