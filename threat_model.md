@@ -26,7 +26,7 @@ The mockup sandbox artifact is development-only and should be ignored for produc
 ## Scan Anchors
 
 - Production entry points: `artifacts/api-server/src/index.ts`, `artifacts/api-server/src/app.ts`, `artifacts/api-server/src/routes/*.ts`.
-- Highest-risk code areas: `routes/auth.ts`, `routes/verify.ts`, `routes/nft.ts`, `contracts/kiut-nft/contracts/KiutSoulbound.sol`, DB schema under `lib/db/src/schema/`.
+- Highest-risk code areas: `routes/auth.ts`, `routes/verify.ts`, `routes/nft.ts`, `contracts/kiut-nft/contracts/KiutSoulbound.sol`, DB schema under `lib/db/src/schema/`, especially `nonces.ts`, `kraken-oauth-states.ts`, and `verifications.ts`.
 - Public surfaces: `/api/verify/sign-message`, `/api/auth/kraken/callback`, `/api/nft/status/:walletAddress`, `/nft/metadata/:tokenId`, plus POST routes that rely on signatures rather than sessions.
 - Dev-only area usually out of scope: `artifacts/mockup-sandbox/`.
 - The app is not currently deployed, but scans should evaluate code paths that would matter in a future public production deployment.
@@ -35,11 +35,11 @@ The mockup sandbox artifact is development-only and should be ignored for produc
 
 ### Spoofing
 
-The project uses signed wallet messages instead of server sessions, so spoofing risk centers on replayed signatures, stale nonces, and weak OAuth state handling. The system must ensure every wallet-linked action is tied to a fresh, single-use proof of wallet control and that Kraken callbacks cannot be replayed or mixed across users.
+The project uses signed wallet messages instead of server sessions, so spoofing risk centers on replayed signatures, stale nonces, and weak OAuth state handling. The system must ensure every wallet-linked action is tied to a fresh, single-use proof of wallet control, that nonce and OAuth-state material expires promptly, and that Kraken callbacks cannot be replayed or mixed across users.
 
 ### Tampering
 
-Attackers can send arbitrary wallet addresses, attestation UIDs, and transaction hashes to the API. The backend must derive security-critical state from trusted sources only, reject client attempts to override verification state, and keep database state transitions atomic so concurrent requests cannot create inconsistent verification or mint records.
+Attackers can send arbitrary wallet addresses, attestation UIDs, and transaction hashes to the API. The backend must derive security-critical state from trusted sources only, reject client attempts to override verification state, keep database state transitions atomic so concurrent requests cannot create inconsistent verification or mint records, and prevent multiple valid challenges for the same wallet from triggering duplicate backend-funded attestations.
 
 ### Information Disclosure
 
@@ -47,8 +47,8 @@ The API exposes some public blockchain-related state by design, but secrets, OAu
 
 ### Denial of Service
 
-Several public routes trigger database writes, external OAuth or RPC calls, cryptographic verification, or blockchain verification work. The production system must prevent cheap unauthenticated abuse from turning these flows into a resource exhaustion vector, especially around attestation and mint authorization.
+Several public routes trigger database writes, external OAuth or RPC calls, cryptographic verification, or blockchain verification work. The production system must prevent cheap unauthenticated abuse from turning these flows into a resource exhaustion vector, especially around nonce issuance, attestation, and mint authorization. Public challenge/state tables must have bounded retention and issuance controls so request floods cannot grow persistent storage without limit.
 
 ### Elevation of Privilege
 
- The most important privilege boundary is the claim that one real Kraken-backed human receives one authoritative on-chain identity proof. The backend and contract must enforce that only legitimately verified wallets can receive mint authorizations, that replayed or duplicated identity linkages are rejected, that any preview/demo verification path is impossible in production, and that one Kraken identity cannot be reused to mint multiple supposedly unique KIUT identities across different wallets.
+ The most important privilege boundary is the claim that one real Kraken-backed human receives one authoritative on-chain identity proof. The backend and contract must enforce that only legitimately verified wallets can receive mint authorizations, that replayed or duplicated identity linkages are rejected, that any preview/demo verification path is impossible in production, that attestation issuance fails closed when the backend signer is unavailable, and that once a Kraken identity has been used to produce a non-revocable proof it cannot be silently freed for reuse on another wallet without revocation or equivalent invalidation of the earlier proof.
