@@ -1,5 +1,55 @@
 import { useState } from "react";
 import { CheckCircle2, ExternalLink, Copy, Twitter } from "lucide-react";
+
+export function NftReceiptCardSkeleton() {
+  return (
+    <div className="w-full max-w-sm mx-auto">
+      <div className="relative rounded-2xl overflow-hidden border border-primary/40 shadow-[0_0_60px_rgba(147,51,234,0.25)]">
+        <div className="absolute inset-0 bg-gradient-to-br from-violet-950/90 via-purple-900/80 to-indigo-950/90" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(147,51,234,0.3)_0%,transparent_70%)]" />
+
+        <div className="relative z-10 p-6 flex flex-col items-center gap-5">
+          {/* Image placeholder */}
+          <div className="relative">
+            <div className="absolute inset-0 rounded-2xl bg-primary/40 blur-2xl scale-125" />
+            <div className="relative w-24 h-24 rounded-2xl border-2 border-primary/30 bg-white/10 animate-pulse" />
+          </div>
+
+          {/* Name + badges placeholder */}
+          <div className="text-center flex flex-col items-center gap-2 w-full">
+            <div className="h-7 w-36 rounded-lg bg-white/15 animate-pulse" />
+            <div className="flex items-center justify-center gap-2">
+              <div className="h-5 w-28 rounded-full bg-white/10 animate-pulse" />
+              <div className="h-5 w-20 rounded-full bg-white/10 animate-pulse" />
+            </div>
+            <div className="h-3 w-48 rounded bg-white/10 animate-pulse mt-1" />
+          </div>
+
+          {/* Info cells placeholder */}
+          <div className="w-full grid grid-cols-2 gap-2.5">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex flex-col gap-1 p-3 rounded-xl bg-white/5 border border-white/10">
+                <div className="h-2.5 w-12 rounded bg-white/20 animate-pulse" />
+                <div className="h-4 w-20 rounded bg-white/15 animate-pulse mt-0.5" />
+              </div>
+            ))}
+          </div>
+
+          {/* Explorer button placeholder */}
+          <div className="w-full h-10 rounded-xl bg-primary/10 border border-primary/20 animate-pulse" />
+
+          {/* Share buttons placeholder */}
+          <div className="w-full grid grid-cols-2 gap-2.5">
+            <div className="h-10 rounded-xl bg-white/10 border border-white/20 animate-pulse" />
+            <div className="h-10 rounded-xl bg-white/10 border border-white/20 animate-pulse" />
+          </div>
+        </div>
+      </div>
+
+      <div className="h-3 w-64 rounded bg-muted-foreground/20 animate-pulse mt-3 mx-auto" />
+    </div>
+  );
+}
 import {
   useGetNftMetadata,
   getGetNftMetadataQueryKey,

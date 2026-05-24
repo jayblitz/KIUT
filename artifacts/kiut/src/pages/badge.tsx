@@ -7,8 +7,8 @@ import {
   getGetNftOwnerQueryKey,
   useGetNftStatus,
 } from "@workspace/api-client-react";
-import { NftReceiptCard } from "@/components/NftReceiptCard";
-import { Loader2, AlertCircle, ArrowLeft, Search } from "lucide-react";
+import { NftReceiptCard, NftReceiptCardSkeleton } from "@/components/NftReceiptCard";
+import { AlertCircle, ArrowLeft, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -203,9 +203,13 @@ export default function BadgePage() {
         )}
 
         {isValidTokenId && isLoading && (
-          <div className="flex flex-col items-center gap-4 text-center">
-            <Loader2 className="w-10 h-10 text-primary animate-spin" />
-            <p className="text-muted-foreground text-sm">Loading badge…</p>
+          <div className="w-full max-w-sm">
+            <div className="text-center mb-8">
+              <div className="h-3 w-24 rounded bg-primary/20 animate-pulse mx-auto mb-2" />
+              <div className="h-8 w-56 rounded-lg bg-muted/60 animate-pulse mx-auto mb-3" />
+              <div className="h-3 w-64 rounded bg-muted/40 animate-pulse mx-auto" />
+            </div>
+            <NftReceiptCardSkeleton />
           </div>
         )}
 
@@ -228,7 +232,7 @@ export default function BadgePage() {
         )}
 
         {isValidTokenId && !isLoading && !isError && metadata && (
-          <div className="w-full max-w-sm">
+          <div className="w-full max-w-sm animate-in fade-in duration-500">
             <div className="text-center mb-8">
               <span className="text-xs font-bold tracking-widest uppercase text-primary mb-2 block">
                 Verified Human
