@@ -27,7 +27,7 @@ The mockup sandbox artifact is development-only and should be ignored for produc
 
 - Production entry points: `artifacts/api-server/src/index.ts`, `artifacts/api-server/src/app.ts`, `artifacts/api-server/src/routes/*.ts`.
 - Highest-risk code areas: `routes/auth.ts`, `routes/verify.ts`, `routes/nft.ts`, `contracts/kiut-nft/contracts/KiutSoulbound.sol`, DB schema under `lib/db/src/schema/`, especially `nonces.ts`, `kraken-oauth-states.ts`, and `verifications.ts`.
-- Public surfaces: `/api/verify/sign-message`, `/api/auth/kraken/callback`, `/api/nft/status/:walletAddress`, `/nft/metadata/:tokenId`, plus POST routes that rely on signatures rather than sessions.
+- Public surfaces: `/api/verify/sign-message`, `/api/auth/kraken/start`, `/api/auth/kraken/callback`, `/api/nft/mint`, `/api/nft/status/:walletAddress`, `/nft/metadata/:tokenId`, and `/badge/:tokenId`.
 - Dev-only area usually out of scope: `artifacts/mockup-sandbox/`.
 - The app is not currently deployed, but scans should evaluate code paths that would matter in a future public production deployment.
 
@@ -43,11 +43,11 @@ Attackers can send arbitrary wallet addresses, attestation UIDs, and transaction
 
 ### Information Disclosure
 
-The API exposes some public blockchain-related state by design, but secrets, OAuth tokens, and private verification metadata must never be logged or returned to arbitrary callers. Error messages and logs must avoid leaking internal secrets or raw authorization data.
+The API exposes some public blockchain-related state by design, but secrets, OAuth tokens, and private verification metadata must never be logged or returned to arbitrary callers. Public badge and status endpoints must not reveal more than is intentionally public from the NFT itself; in particular, attestation handles or third-party identity linkage data should be treated as sensitive unless the product explicitly decides those identifiers are public. Error messages and logs must avoid leaking internal secrets or raw authorization data.
 
 ### Denial of Service
 
-Several public routes trigger database writes, external OAuth or RPC calls, cryptographic verification, or blockchain verification work. The production system must prevent cheap unauthenticated abuse from turning these flows into a resource exhaustion vector, especially around nonce issuance, attestation, and mint authorization. Public challenge/state tables must have bounded retention and issuance controls so request floods cannot grow persistent storage without limit.
+Several public routes trigger database writes, external OAuth or RPC calls, cryptographic verification, or blockchain verification work. The production system must prevent cheap unauthenticated abuse from turning these flows into a resource exhaustion vector, especially around nonce issuance, Kraken OAuth state creation, attestation, and mint authorization. Public challenge/state tables must have bounded retention, single-use semantics, and issuance controls so request floods cannot grow persistent storage without limit.
 
 ### Elevation of Privilege
 
