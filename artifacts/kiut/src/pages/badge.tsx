@@ -17,7 +17,7 @@ export default function BadgePage() {
     },
   });
 
-  const { data: ownerData } = useGetNftOwner(tokenId ?? "", {
+  const { data: ownerData, isLoading: isOwnerLoading } = useGetNftOwner(tokenId ?? "", {
     query: {
       enabled: isValidTokenId,
       queryKey: getGetNftOwnerQueryKey(tokenId ?? ""),
@@ -120,6 +120,7 @@ export default function BadgePage() {
             <NftReceiptCard
               tokenId={tokenId ?? ""}
               walletAddress={ownerData?.walletAddress ?? ""}
+              isOwnerLoading={isOwnerLoading}
               shareUrl={shareUrl}
             />
 

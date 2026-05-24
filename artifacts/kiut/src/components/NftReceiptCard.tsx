@@ -10,12 +10,14 @@ export function NftReceiptCard({
   txHash = "",
   contractAddress,
   walletAddress = "",
+  isOwnerLoading = false,
   shareUrl,
 }: {
   tokenId: string;
   txHash?: string;
   contractAddress?: string;
   walletAddress?: string;
+  isOwnerLoading?: boolean;
   shareUrl?: string;
 }) {
   const [copied, setCopied] = useState<string | null>(null);
@@ -78,7 +80,13 @@ export function NftReceiptCard({
                 ✓ Verified
               </span>
             </div>
-            {walletAddress ? (
+            {isOwnerLoading ? (
+              <p className="text-white/50 text-xs flex items-center justify-center gap-1.5">
+                Issued to{" "}
+                <span className="inline-block w-24 h-3 rounded bg-white/15 animate-pulse" />
+                {" "}on Inkonchain
+              </p>
+            ) : walletAddress ? (
               <p className="text-white/50 text-xs">
                 Issued to{" "}
                 <span className="font-mono text-white/70">
@@ -113,7 +121,9 @@ export function NftReceiptCard({
                   link={`${INK_EXPLORER}/address/${resolvedContract}`}
                   fullSpan={false}
                 />
-                {walletAddress ? (
+                {isOwnerLoading ? (
+                  <SkeletonCell label="Wallet" />
+                ) : walletAddress ? (
                   <InfoCell
                     label="Wallet"
                     value={shortAddr(walletAddress)}
@@ -127,7 +137,9 @@ export function NftReceiptCard({
                 )}
               </>
             )}
-            {!resolvedContract && walletAddress && (
+            {!resolvedContract && (isOwnerLoading ? (
+              <SkeletonCell label="Wallet" fullSpan />
+            ) : walletAddress ? (
               <InfoCell
                 label="Wallet"
                 value={shortAddr(walletAddress)}
@@ -136,7 +148,7 @@ export function NftReceiptCard({
                 link={`${INK_EXPLORER}/address/${walletAddress}`}
                 fullSpan={true}
               />
-            )}
+            ) : null)}
           </div>
 
           {nftUrl && (
@@ -198,6 +210,15 @@ export function NftReceiptCard({
       <p className="text-center text-xs text-muted-foreground mt-3">
         This soulbound NFT is permanently bound to your wallet and cannot be transferred.
       </p>
+    </div>
+  );
+}
+
+function SkeletonCell({ label, fullSpan = false }: { label: string; fullSpan?: boolean }) {
+  return (
+    <div className={`flex flex-col gap-1 p-3 rounded-xl bg-white/5 border border-white/10 ${fullSpan ? "col-span-2" : ""}`}>
+      <span className="text-[10px] font-semibold tracking-widest uppercase text-white/40">{label}</span>
+      <div className="h-4 w-28 rounded bg-white/15 animate-pulse" />
     </div>
   );
 }
