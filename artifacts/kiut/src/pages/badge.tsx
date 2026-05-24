@@ -1,8 +1,128 @@
-import { useEffect } from "react";
-import { useParams, Link } from "wouter";
-import { useGetNftMetadata, getGetNftMetadataQueryKey, useGetNftOwner, getGetNftOwnerQueryKey } from "@workspace/api-client-react";
+import { useEffect, useState } from "react";
+import { useParams, Link, useLocation } from "wouter";
+import {
+  useGetNftMetadata,
+  getGetNftMetadataQueryKey,
+  useGetNftOwner,
+  getGetNftOwnerQueryKey,
+  useGetNftStatus,
+} from "@workspace/api-client-react";
 import { NftReceiptCard } from "@/components/NftReceiptCard";
-import { Loader2, AlertCircle, ArrowLeft } from "lucide-react";
+import { Loader2, AlertCircle, ArrowLeft, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
+// ─── Wallet search form ───────────────────────────────────────────────────────
+
+function WalletSearch() {
+  const [, navigate] = useLocation();
+  const [input, setInput] = useState("");
+  const [submitted, setSubmitted] = useState("");
+
+  const isValidAddress = (v: string) => /^0x[0-9a-fA-F]{40}$/.test(v.trim());
+
+  const { data: status, isLoading, isFetched } = useGetNftStatus(submitted, {
+    query: {
+      enabled: Boolean(submitted),
+      retry: 1,
+    },
+  });
+
+  useEffect(() => {
+    if (isFetched && submitted && status) {
+      if (status.hasMinted && status.tokenId) {
+        navigate(`/badge/${status.tokenId}`);
+      }
+    }
+  }, [isFetched, submitted, status, navigate]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = input.trim();
+    if (!isValidAddress(trimmed)) return;
+    setSubmitted(trimmed);
+  };
+
+  const notFound = isFetched && submitted && (!status?.hasMinted || !status?.tokenId);
+  const badAddress = input.trim() && !isValidAddress(input.trim());
+
+  return (
+    <div className="w-full max-w-md">
+      <div className="text-center mb-8">
+        <span className="text-xs font-bold tracking-widest uppercase text-primary mb-2 block">
+          Badge Lookup
+        </span>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+          Find a KIUT Badge
+        </h1>
+        <p className="text-sm text-muted-foreground mt-2">
+          Paste a wallet address to find their verified humanity badge.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="0x… wallet address"
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value);
+              setSubmitted("");
+            }}
+            className="pl-9 font-mono text-sm"
+            spellCheck={false}
+            autoComplete="off"
+          />
+        </div>
+
+        {badAddress && (
+          <p className="text-xs text-destructive px-1">
+            Must be a valid Ethereum address (0x… followed by 40 hex characters).
+          </p>
+        )}
+
+        <Button
+          type="submit"
+          disabled={!isValidAddress(input.trim()) || isLoading}
+          className="w-full"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Looking up…
+            </>
+          ) : (
+            "Look up badge"
+          )}
+        </Button>
+      </form>
+
+      {notFound && (
+        <div className="mt-6 flex flex-col items-center gap-3 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center">
+            <AlertCircle className="w-6 h-6 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-medium">No badge found</p>
+          <p className="text-xs text-muted-foreground max-w-xs">
+            The wallet{" "}
+            <span className="font-mono break-all">{submitted}</span>{" "}
+            hasn't minted a KIUT badge yet.
+          </p>
+          <Link
+            href="/"
+            className="mt-1 text-sm text-primary hover:underline underline-offset-4"
+          >
+            Get verified and mint yours →
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main badge page ──────────────────────────────────────────────────────────
 
 export default function BadgePage() {
   const { tokenId } = useParams<{ tokenId: string }>();
@@ -60,7 +180,11 @@ export default function BadgePage() {
       </header>
 
       <main className="flex-1 relative z-10 flex flex-col items-center justify-center px-4 py-16">
-        {!isValidTokenId && (
+        {/* No tokenId in URL — show wallet search */}
+        {!tokenId && <WalletSearch />}
+
+        {/* Invalid tokenId format */}
+        {tokenId && !isValidTokenId && (
           <div className="flex flex-col items-center gap-4 text-center max-w-sm">
             <div className="w-14 h-14 rounded-2xl bg-destructive/10 flex items-center justify-center">
               <AlertCircle className="w-7 h-7 text-destructive" />
@@ -70,10 +194,10 @@ export default function BadgePage() {
               The token ID in this URL is not valid. Token IDs must be non-negative integers.
             </p>
             <Link
-              href="/"
+              href="/badge"
               className="mt-2 text-sm text-primary hover:underline underline-offset-4"
             >
-              ← Back to KIUT
+              ← Search by wallet address
             </Link>
           </div>
         )}
@@ -95,10 +219,10 @@ export default function BadgePage() {
               Token <span className="font-mono">#{tokenId}</span> could not be found. Make sure the token ID is correct.
             </p>
             <Link
-              href="/"
+              href="/badge"
               className="mt-2 text-sm text-primary hover:underline underline-offset-4"
             >
-              ← Back to KIUT
+              ← Search by wallet address
             </Link>
           </div>
         )}
@@ -124,8 +248,16 @@ export default function BadgePage() {
               shareUrl={shareUrl}
             />
 
-            <div className="mt-8 text-center">
-              <p className="text-xs text-muted-foreground mb-3">
+            <div className="mt-8 text-center space-y-3">
+              <div>
+                <Link
+                  href="/badge"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4"
+                >
+                  Search another wallet
+                </Link>
+              </div>
+              <p className="text-xs text-muted-foreground">
                 Don't have your KIUT badge yet?
               </p>
               <Link

@@ -16,6 +16,7 @@ function AppRoutes() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/badge" component={BadgePage} />
       <Route path="/badge/:tokenId" component={BadgePage} />
       <Route component={NotFound} />
     </Switch>
