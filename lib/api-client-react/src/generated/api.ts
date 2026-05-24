@@ -32,6 +32,7 @@ import type {
   ConfirmMintInput,
   ConfirmMintResult,
   NftMetadata,
+  NftOwner,
   NftStatus,
   WalletSignMessage,
   WalletSignRequest
@@ -553,6 +554,48 @@ export function useGetNftMetadata<TData = Awaited<ReturnType<typeof getNftMetada
   options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getNftMetadata>>, TError, TData>; request?: SecondParameter<typeof customFetch> },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetNftMetadataQueryOptions(tokenId, options);
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetNftOwnerUrl = (tokenId: string) => {
+  return `/api/nft/owner/${tokenId}`;
+};
+
+export const getNftOwner = async (tokenId: string, options?: RequestInit): Promise<NftOwner> => {
+  return customFetch<NftOwner>(getGetNftOwnerUrl(tokenId), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetNftOwnerQueryKey = (tokenId: string) => {
+  return [`/api/nft/owner/${tokenId}`] as const;
+};
+
+export const getGetNftOwnerQueryOptions = <TData = Awaited<ReturnType<typeof getNftOwner>>, TError = ErrorType<ApiError>>(
+  tokenId: string,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getNftOwner>>, TError, TData>; request?: SecondParameter<typeof customFetch> },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getGetNftOwnerQueryKey(tokenId);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getNftOwner>>> = ({ signal }) =>
+    getNftOwner(tokenId, { signal, ...requestOptions });
+  return { queryKey, queryFn, enabled: !!(tokenId), ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getNftOwner>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetNftOwnerQueryResult = NonNullable<Awaited<ReturnType<typeof getNftOwner>>>;
+export type GetNftOwnerQueryError = ErrorType<ApiError>;
+
+export function useGetNftOwner<TData = Awaited<ReturnType<typeof getNftOwner>>, TError = ErrorType<ApiError>>(
+  tokenId: string,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getNftOwner>>, TError, TData>; request?: SecondParameter<typeof customFetch> },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetNftOwnerQueryOptions(tokenId, options);
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
   return { ...query, queryKey: queryOptions.queryKey };
 }

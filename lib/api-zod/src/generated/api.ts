@@ -123,6 +123,20 @@ export const GetNftMetadataResponse = zod.object({
 
 
 /**
+ * Returns the wallet address that owns a given token ID
+ * @summary Get NFT owner
+ */
+export const GetNftOwnerParams = zod.object({
+  "tokenId": zod.coerce.string()
+})
+
+export const GetNftOwnerResponse = zod.object({
+  "tokenId": zod.string(),
+  "walletAddress": zod.string().nullable(),
+})
+
+
+/**
  * Returns whether the wallet has minted a KIUT NFT and related details
  * @summary Get NFT mint status
  */

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useParams, Link } from "wouter";
-import { useGetNftMetadata, getGetNftMetadataQueryKey } from "@workspace/api-client-react";
+import { useGetNftMetadata, getGetNftMetadataQueryKey, useGetNftOwner, getGetNftOwnerQueryKey } from "@workspace/api-client-react";
 import { NftReceiptCard } from "@/components/NftReceiptCard";
 import { Loader2, AlertCircle, ArrowLeft } from "lucide-react";
 
@@ -13,6 +13,14 @@ export default function BadgePage() {
     query: {
       enabled: isValidTokenId,
       queryKey: getGetNftMetadataQueryKey(tokenId ?? ""),
+      retry: 1,
+    },
+  });
+
+  const { data: ownerData } = useGetNftOwner(tokenId ?? "", {
+    query: {
+      enabled: isValidTokenId,
+      queryKey: getGetNftOwnerQueryKey(tokenId ?? ""),
       retry: 1,
     },
   });
@@ -111,6 +119,7 @@ export default function BadgePage() {
 
             <NftReceiptCard
               tokenId={tokenId ?? ""}
+              walletAddress={ownerData?.walletAddress ?? ""}
               shareUrl={shareUrl}
             />
 

@@ -128,6 +128,12 @@ export interface NftMetadata {
   contractAddress: string;
 }
 
+export interface NftOwner {
+  tokenId: string;
+  /** @nullable */
+  walletAddress: string | null;
+}
+
 export type KrakenAuthCallbackParams = {
 code: string;
 state: string;

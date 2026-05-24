@@ -261,6 +261,32 @@ router.post("/nft/confirm", async (req, res): Promise<void> => {
   res.json(ConfirmNftMintResponse.parse({ success: true }));
 });
 
+// ─── GET /nft/owner/:tokenId ─────────────────────────────────────────────────
+// Looks up the wallet address that owns (minted) a given token ID from the DB.
+// Falls back gracefully if the token isn't tracked in the DB (on-chain only).
+
+router.get("/nft/owner/:tokenId", async (req, res): Promise<void> => {
+  const tokenId = req.params.tokenId;
+
+  if (!tokenId || !/^\d+$/.test(tokenId)) {
+    res.status(400).json({ error: "invalid_token_id", message: "Invalid token ID — must be a non-negative integer" });
+    return;
+  }
+
+  const rows = await db
+    .select({ walletAddress: verificationsTable.walletAddress })
+    .from(verificationsTable)
+    .where(eq(verificationsTable.nftTokenId, tokenId))
+    .limit(1);
+
+  if (!rows.length) {
+    res.json({ tokenId, walletAddress: null });
+    return;
+  }
+
+  res.json({ tokenId, walletAddress: rows[0].walletAddress });
+});
+
 // ─── GET /nft/badge/:tokenId ─────────────────────────────────────────────────
 // Serves the unique per-token SVG badge image under the /api prefix.
 // This path is reachable from the browser via the Replit proxy (/api/nft/badge/:tokenId).
