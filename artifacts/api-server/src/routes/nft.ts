@@ -71,7 +71,9 @@ router.post("/nft/mint", async (req, res): Promise<void> => {
     return;
   }
 
-  if (!verification.attestationUid) {
+  // Require a fully finalized attestation UID — the sentinel value "pending" means
+  // on-chain attestation is still in progress and must not unblock minting.
+  if (!verification.attestationUid || verification.attestationUid === "pending") {
     res.status(400).json({
       error: "not_attested",
       message: "EAS attestation has not been issued. Complete the attestation step first.",

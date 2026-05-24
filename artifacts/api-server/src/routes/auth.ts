@@ -233,6 +233,41 @@ router.get("/auth/kraken/callback", async (req, res): Promise<void> => {
     return;
   }
 
+  // ── Immutable-attestation guard ────────────────────────────────────────────
+  // If this wallet already has an on-chain attestation or has minted an NFT, its
+  // Kraken identity is immutably committed. Block any attempt to relink to a new
+  // Kraken account; allowing it would free the original Kraken identity for reuse
+  // by another wallet, breaking the one-human-per-KIUT invariant.
+  const existingVerification = await db
+    .select({
+      krakenAccountId: verificationsTable.krakenAccountId,
+      attestationUid: verificationsTable.attestationUid,
+      hasMinted: verificationsTable.hasMinted,
+    })
+    .from(verificationsTable)
+    .where(eq(verificationsTable.walletAddress, walletAddress))
+    .limit(1);
+
+  if (existingVerification.length) {
+    const existing = existingVerification[0];
+    // Treat "pending" as locked: once the attestation claim has been taken (even
+    // mid-flight), relinking to a new Kraken account is blocked. This closes the
+    // race window where a relink could swap the Kraken identity while attestation
+    // is being submitted on-chain.
+    const isAttested = !!existing.attestationUid;
+    const isMinted = existing.hasMinted;
+    const isDifferentKraken = existing.krakenAccountId &&
+      existing.krakenAccountId.toLowerCase() !== krakenAccountId.toLowerCase();
+
+    if ((isAttested || isMinted) && isDifferentKraken) {
+      // The wallet already has a committed attestation or NFT under a different Kraken
+      // identity. Relinking is permanently blocked to preserve the uniqueness guarantee.
+      const redirectUrl = `${FRONTEND_URL}?krakenError=already_attested&walletAddress=${encodeURIComponent(walletAddress)}`;
+      res.redirect(302, redirectUrl);
+      return;
+    }
+  }
+
   try {
     await db
       .insert(verificationsTable)
