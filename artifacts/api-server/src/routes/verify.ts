@@ -54,19 +54,11 @@ router.post("/verify/sign-message", async (req, res): Promise<void> => {
 
   const now = new Date();
 
-  // Delete any existing unused, non-expired nonces for this wallet before inserting a new one.
-  // This enforces a maximum of one active nonce per wallet, preventing DB growth from
-  // repeated calls.
-  await db
-    .delete(noncesTable)
-    .where(
-      and(
-        eq(noncesTable.walletAddress, walletAddress),
-        eq(noncesTable.used, false),
-      ),
-    );
-
-  // Also clean up expired nonces for this wallet that were never used.
+  // Only clean up expired nonces — do NOT delete unused, still-valid nonces here.
+  // Deleting a valid nonce in response to an unauthenticated request would let any
+  // third party who knows the wallet address invalidate another user's in-progress
+  // verification by racing a new sign-message call between their wallet-sign and
+  // their /auth/kraken/start or /verify/attest request (Vuln 2 / availability).
   await db
     .delete(noncesTable)
     .where(

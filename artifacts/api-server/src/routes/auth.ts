@@ -115,13 +115,30 @@ router.post("/auth/kraken/start", async (req, res): Promise<void> => {
   if (IS_DEMO_MODE) {
     // Demo mode (development only): skip Kraken OAuth, create linkage immediately
     const demoKrakenAccountId = `demo_kraken_${walletAddress.slice(2, 8)}`;
-    await db
-      .insert(verificationsTable)
-      .values({ walletAddress, krakenAccountId: demoKrakenAccountId, hasMinted: false })
-      .onConflictDoUpdate({
-        target: verificationsTable.walletAddress,
-        set: { krakenAccountId: demoKrakenAccountId, updatedAt: new Date() },
-      });
+    // Wrap the upsert and nonce wipe in a single transaction so the linkage write
+    // and nonce invalidation are atomic (mirrors the real-callback transaction).
+    await db.transaction(async (tx) => {
+      await tx
+        .insert(verificationsTable)
+        .values({ walletAddress, krakenAccountId: demoKrakenAccountId, hasMinted: false })
+        .onConflictDoUpdate({
+          target: verificationsTable.walletAddress,
+          set: { krakenAccountId: demoKrakenAccountId, updatedAt: new Date() },
+        });
+
+      // Wipe all unused nonces atomically with the linkage write so there is
+      // no observable state where krakenAccountId is set but pre-OAuth nonces
+      // still exist (closes Vuln 1 in the development/demo path).
+      await tx
+        .delete(noncesTable)
+        .where(
+          and(
+            eq(noncesTable.walletAddress, walletAddress),
+            eq(noncesTable.used, false),
+          ),
+        );
+    });
+
     authUrl = `${FRONTEND_URL}?krakenLinked=true&walletAddress=${encodeURIComponent(walletAddress)}`;
   } else {
     const params = new URLSearchParams({
@@ -342,12 +359,16 @@ router.get("/auth/kraken/callback", async (req, res): Promise<void> => {
     }
   }
 
-  // ── Atomic conditional write ───────────────────────────────────────────────
-  // Use a transaction so the guard check and the write happen as a single
-  // serialized unit. A plain read-then-upsert has a TOCTOU window where a
-  // concurrent /verify/attest can set attestationUid = "pending" between the
-  // guard read above and the write below, causing krakenAccountId to be
-  // overwritten after the attestation slot is already claimed.
+  // ── Atomic conditional write + nonce invalidation ─────────────────────────
+  // Use a transaction so the guard check, the linkage write, and the nonce wipe
+  // all happen as a single serialized unit.
+  //
+  // Keeping the nonce delete inside the same transaction as the Kraken linkage
+  // write closes the fresh-proof boundary race (Vuln 1): there is no observable
+  // DB state where krakenAccountId is set but old unused nonces still exist.
+  // A concurrent /verify/attest that reads verifications AFTER the transaction
+  // commits will find zero unused pre-OAuth nonces and must reject or wait for
+  // a fresh post-OAuth proof.
   //
   // Strategy:
   //   1. Try to UPDATE the row — but only when it is not yet attested/minted.
@@ -356,6 +377,8 @@ router.get("/auth/kraken/callback", async (req, res): Promise<void> => {
   //      follow-up SELECT inside the same transaction.
   //   3. If the row is attested/minted, signal that the relink is blocked.
   //   4. If the row does not exist, INSERT it.
+  //   5. On any successful write (UPDATE or INSERT), wipe all unused nonces for
+  //      this wallet inside the same transaction boundary.
   //
   // The conditional UPDATE is the enforcement boundary that closes the race:
   // even if /verify/attest sets "pending" between the pre-check and this point,
@@ -399,6 +422,18 @@ router.get("/auth/kraken/callback", async (req, res): Promise<void> => {
           hasMinted: false,
         });
       }
+
+      // Wipe all unused nonces for this wallet atomically with the linkage write.
+      // Any nonce for /verify/attest must be freshly obtained after this commit,
+      // guaranteeing the attestation proof was not pre-collected before OAuth.
+      await tx
+        .delete(noncesTable)
+        .where(
+          and(
+            eq(noncesTable.walletAddress, walletAddress),
+            eq(noncesTable.used, false),
+          ),
+        );
     });
   } catch (err: unknown) {
     // Handle concurrent unique-constraint violation on kraken_account_id:
