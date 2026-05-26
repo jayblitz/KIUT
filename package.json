@@ -14,11 +14,6 @@
     "typescript": "~5.9.3"
   },
   "pnpm": {
-    "auditConfig": {
-      "ignoreCves": [
-        "CVE-2025-14505"
-      ]
-    },
     "overrides": {
       "esbuild>@esbuild/darwin-arm64": "-",
       "esbuild>@esbuild/darwin-x64": "-",
@@ -109,6 +104,9 @@
       "tmp": "0.2.5",
       "qs": "6.15.2",
       "elliptic": "6.6.1"
+    },
+    "patchedDependencies": {
+      "elliptic@6.6.1": "patches/elliptic@6.6.1.patch"
     }
   }
 }
