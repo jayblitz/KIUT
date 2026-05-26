@@ -42,7 +42,8 @@ router.post("/auth/kraken/start", async (req, res): Promise<void> => {
     return;
   }
 
-  const { walletAddress, signature, nonce } = parsed.data;
+  const { signature, nonce } = parsed.data;
+  const walletAddress = parsed.data.walletAddress.toLowerCase();
 
   // Validate the nonce without consuming it. The same (nonce, signature) pair is
   // intentionally reused for both Kraken linkage and the subsequent /verify/attest
@@ -160,7 +161,8 @@ router.get("/auth/kraken/callback", async (req, res): Promise<void> => {
     return;
   }
 
-  const { walletAddress, nonce: storedNonce } = stateRecord[0];
+  const { nonce: storedNonce } = stateRecord[0];
+  const walletAddress = stateRecord[0].walletAddress.toLowerCase();
 
   // Re-validate the underlying wallet proof nonce to ensure the original proof
   // window has not ended. The OAuth state TTL is already capped at nonce expiry
@@ -330,18 +332,64 @@ router.get("/auth/kraken/callback", async (req, res): Promise<void> => {
     }
   }
 
+  // ── Atomic conditional write ───────────────────────────────────────────────
+  // Use a transaction so the guard check and the write happen as a single
+  // serialized unit. A plain read-then-upsert has a TOCTOU window where a
+  // concurrent /verify/attest can set attestationUid = "pending" between the
+  // guard read above and the write below, causing krakenAccountId to be
+  // overwritten after the attestation slot is already claimed.
+  //
+  // Strategy:
+  //   1. Try to UPDATE the row — but only when it is not yet attested/minted.
+  //   2. If 0 rows were updated, the row either does not exist (new wallet) or
+  //      is already locked by an attestation. Distinguish the two cases with a
+  //      follow-up SELECT inside the same transaction.
+  //   3. If the row is attested/minted, signal that the relink is blocked.
+  //   4. If the row does not exist, INSERT it.
+  //
+  // The conditional UPDATE is the enforcement boundary that closes the race:
+  // even if /verify/attest sets "pending" between the pre-check and this point,
+  // the WHERE clause (attestation_uid IS NULL AND has_minted = false) will
+  // reject the UPDATE, and the follow-up SELECT will detect the locked state.
+  let relinkBlocked = false;
   try {
-    await db
-      .insert(verificationsTable)
-      .values({
-        walletAddress,
-        krakenAccountId,
-        hasMinted: false,
-      })
-      .onConflictDoUpdate({
-        target: verificationsTable.walletAddress,
-        set: { krakenAccountId, updatedAt: new Date() },
-      });
+    await db.transaction(async (tx) => {
+      const updated = await tx
+        .update(verificationsTable)
+        .set({ krakenAccountId, updatedAt: new Date() })
+        .where(
+          and(
+            eq(verificationsTable.walletAddress, walletAddress),
+            isNull(verificationsTable.attestationUid),
+            eq(verificationsTable.hasMinted, false),
+          ),
+        )
+        .returning({ walletAddress: verificationsTable.walletAddress });
+
+      if (!updated.length) {
+        const existing = await tx
+          .select({
+            attestationUid: verificationsTable.attestationUid,
+            hasMinted: verificationsTable.hasMinted,
+          })
+          .from(verificationsTable)
+          .where(eq(verificationsTable.walletAddress, walletAddress))
+          .limit(1);
+
+        if (existing.length) {
+          // Row exists but update was blocked — wallet is already attested/minted.
+          relinkBlocked = true;
+          return;
+        }
+
+        // No row exists yet — new wallet. Insert it.
+        await tx.insert(verificationsTable).values({
+          walletAddress,
+          krakenAccountId,
+          hasMinted: false,
+        });
+      }
+    });
   } catch (err: unknown) {
     // Handle concurrent unique-constraint violation on kraken_account_id:
     // If two requests race past the existingLink check simultaneously, the DB
@@ -358,6 +406,12 @@ router.get("/auth/kraken/callback", async (req, res): Promise<void> => {
       return;
     }
     throw err;
+  }
+
+  if (relinkBlocked) {
+    const redirectUrl = `${FRONTEND_URL}?krakenError=already_attested&walletAddress=${encodeURIComponent(walletAddress)}`;
+    res.redirect(302, redirectUrl);
+    return;
   }
 
   const redirectUrl = `${FRONTEND_URL}?krakenLinked=true&walletAddress=${encodeURIComponent(walletAddress)}`;

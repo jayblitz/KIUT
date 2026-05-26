@@ -35,7 +35,7 @@ router.post("/verify/sign-message", async (req, res): Promise<void> => {
     return;
   }
 
-  const { walletAddress } = parsed.data;
+  const walletAddress = parsed.data.walletAddress.toLowerCase();
 
   if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
     res.status(400).json({ error: "invalid_address", message: "Invalid Ethereum wallet address" });
@@ -99,7 +99,8 @@ router.post("/verify/attest", async (req, res): Promise<void> => {
     return;
   }
 
-  const { walletAddress, signature, nonce } = parsed.data;
+  const { signature, nonce } = parsed.data;
+  const walletAddress = parsed.data.walletAddress.toLowerCase();
 
   const now = new Date();
 
@@ -217,7 +218,32 @@ router.post("/verify/attest", async (req, res): Promise<void> => {
   }
 
   // ── 7. Issue EAS attestation ──────────────────────────────────────────────
-  const krakenAccountId = verification[0].krakenAccountId;
+  // Re-read the verification row after claiming the pending slot to get the
+  // authoritative krakenAccountId. A concurrent /auth/kraken/callback could have
+  // updated the row between our initial read (step 3) and the pending claim (step 6).
+  // Using this fresh value ensures the on-chain attestation always matches the
+  // current DB state, closing the TOCTOU race window.
+  const freshVerification = await db
+    .select()
+    .from(verificationsTable)
+    .where(eq(verificationsTable.walletAddress, walletAddress))
+    .limit(1);
+
+  if (!freshVerification.length || !freshVerification[0].krakenAccountId) {
+    await db
+      .update(verificationsTable)
+      .set({ attestationUid: null, updatedAt: new Date() })
+      .where(
+        and(
+          eq(verificationsTable.walletAddress, walletAddress),
+          eq(verificationsTable.attestationUid, "pending"),
+        ),
+      );
+    res.status(400).json({ error: "kraken_not_linked", message: "Kraken account is no longer linked for this wallet." });
+    return;
+  }
+
+  const krakenAccountId = freshVerification[0].krakenAccountId;
   let attestationUid: string;
   let txHash: string;
 

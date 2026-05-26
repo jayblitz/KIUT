@@ -1,4 +1,5 @@
-import { pgTable, text, timestamp, boolean, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, unique, check } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -15,6 +16,7 @@ export const verificationsTable = pgTable("verifications", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [
   unique("verifications_kraken_account_id_unique").on(t.krakenAccountId),
+  check("verifications_wallet_address_lowercase", sql`${t.walletAddress} = lower(${t.walletAddress})`),
 ]);
 
 export const insertVerificationSchema = createInsertSchema(verificationsTable).omit({
