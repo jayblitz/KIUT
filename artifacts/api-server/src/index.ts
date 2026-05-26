@@ -1,6 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
-import { db, noncesTable } from "@workspace/db";
+import { db, noncesTable, krakenOauthStatesTable } from "@workspace/db";
 import { and, eq, lt, isNotNull } from "drizzle-orm";
 
 const rawPort = process.env["PORT"];
@@ -47,6 +47,21 @@ async function deleteExpiredNonces(): Promise<void> {
   }
 }
 
+async function deleteExpiredOauthStates(): Promise<void> {
+  try {
+    const now = new Date();
+    const deleted = await db
+      .delete(krakenOauthStatesTable)
+      .where(lt(krakenOauthStatesTable.expiresAt, now))
+      .returning({ id: krakenOauthStatesTable.id });
+    if (deleted.length > 0) {
+      logger.info({ count: deleted.length }, "Purged expired Kraken OAuth state rows");
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to purge expired Kraken OAuth state rows");
+  }
+}
+
 app.listen(port, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
@@ -57,5 +72,7 @@ app.listen(port, (err) => {
 
   // Run an initial cleanup on startup, then on a recurring interval.
   void deleteExpiredNonces();
+  void deleteExpiredOauthStates();
   setInterval(() => void deleteExpiredNonces(), NONCE_CLEANUP_INTERVAL_MS);
+  setInterval(() => void deleteExpiredOauthStates(), NONCE_CLEANUP_INTERVAL_MS);
 });

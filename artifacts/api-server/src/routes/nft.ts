@@ -126,11 +126,14 @@ router.post("/nft/mint", async (req, res): Promise<void> => {
   const nonceHex = "0x" + nonceBytes.toString("hex") as `0x${string}`;
 
   // Record nonce in DB (reuse noncesTable, message = "mint-auth")
+  // expiresAt is set so the global cleanup job reclaims rows that are never consumed.
+  const MINT_NONCE_TTL_MS = 30 * 60 * 1000;
   await db.insert(noncesTable).values({
     walletAddress,
     nonce: nonceHex,
     message: "mint-auth",
     used: false,
+    expiresAt: new Date(Date.now() + MINT_NONCE_TTL_MS),
   });
 
   // ── 4. Sign keccak256(abi.encodePacked(contractAddress, walletAddress, nonce)) ──

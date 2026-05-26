@@ -49,6 +49,24 @@ const signMessageRateLimit = rateLimit({
 
 app.use("/api/verify/sign-message", signMessageRateLimit);
 
+// Rate limit the public mint-authorization endpoint. It is unauthenticated and
+// inserts DB rows + performs on-chain reads and signing on every call. Without
+// throttling, a single caller can exhaust storage and backend resources at
+// negligible cost. 5 requests per 15-minute window per IP is sufficient for
+// legitimate users while making bulk-abuse impractical.
+const mintRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: "rate_limited",
+    message: "Too many mint requests from this IP. Please try again later.",
+  },
+});
+
+app.use("/api/nft/mint", mintRateLimit);
+
 // NFT metadata served at /nft/metadata/:tokenId (no /api prefix)
 // to match the tokenURI stored on-chain: https://kiut.xyz/nft/metadata/:tokenId
 app.use(nftMetadataRouter);

@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import crypto from "crypto";
 import { ethers } from "ethers";
 import { db, krakenOauthStatesTable, verificationsTable, noncesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq, gt, isNull, or } from "drizzle-orm";
 import {
   StartKrakenAuthBody,
   StartKrakenAuthResponse,
@@ -44,13 +44,27 @@ router.post("/auth/kraken/start", async (req, res): Promise<void> => {
 
   const { walletAddress, signature, nonce } = parsed.data;
 
+  // Validate the nonce without consuming it. The same (nonce, signature) pair is
+  // intentionally reused for both Kraken linkage and the subsequent /verify/attest
+  // step; consuming it here would break attestation. Instead we prevent state
+  // explosion via one-active-state-per-nonce semantics below.
   const nonceRecord = await db
     .select()
     .from(noncesTable)
-    .where(eq(noncesTable.nonce, nonce))
+    .where(
+      and(
+        eq(noncesTable.nonce, nonce),
+        eq(noncesTable.walletAddress, walletAddress),
+        eq(noncesTable.used, false),
+        or(
+          isNull(noncesTable.expiresAt),
+          gt(noncesTable.expiresAt, new Date()),
+        ),
+      ),
+    )
     .limit(1);
 
-  if (!nonceRecord.length || nonceRecord[0].walletAddress !== walletAddress || nonceRecord[0].used) {
+  if (!nonceRecord.length) {
     res.status(400).json({ error: "invalid_nonce", message: "Nonce is invalid or already used" });
     return;
   }
@@ -62,12 +76,28 @@ router.post("/auth/kraken/start", async (req, res): Promise<void> => {
   }
 
   const state = crypto.randomBytes(32).toString("hex");
+  const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+
+  // Cap OAuth state lifetime at the nonce's own expiry so the state can never
+  // outlive the wallet proof window. e.g. if the nonce expires in 2 minutes,
+  // the OAuth state also expires in 2 minutes even though the default TTL is 10.
+  const defaultExpiry = new Date(Date.now() + OAUTH_STATE_TTL_MS);
+  const nonceExpiry = nonceRecord[0].expiresAt;
+  const oauthStateExpiry = nonceExpiry && nonceExpiry < defaultExpiry ? nonceExpiry : defaultExpiry;
+
+  // Enforce one-active-state-per-nonce: delete any existing (possibly stale) OAuth
+  // state rows for this nonce before inserting a fresh one. This prevents a caller
+  // from accumulating unbounded state rows by replaying the same wallet proof.
+  // The nonce is NOT marked used here because the same (nonce, signature) pair must
+  // remain valid for the subsequent /verify/attest step.
+  await db.delete(krakenOauthStatesTable).where(eq(krakenOauthStatesTable.nonce, nonce));
 
   await db.insert(krakenOauthStatesTable).values({
     state,
     walletAddress,
     signature,
     nonce,
+    expiresAt: oauthStateExpiry,
   });
 
   let authUrl: string;
@@ -123,7 +153,39 @@ router.get("/auth/kraken/callback", async (req, res): Promise<void> => {
     return;
   }
 
-  const { walletAddress } = stateRecord[0];
+  // Reject expired OAuth state tokens
+  if (stateRecord[0].expiresAt < new Date()) {
+    await db.delete(krakenOauthStatesTable).where(eq(krakenOauthStatesTable.state, state));
+    res.status(400).json({ error: "invalid_state", message: "Invalid or expired OAuth state" });
+    return;
+  }
+
+  const { walletAddress, nonce: storedNonce } = stateRecord[0];
+
+  // Re-validate the underlying wallet proof nonce to ensure the original proof
+  // window has not ended. The OAuth state TTL is already capped at nonce expiry
+  // at start time, but this check closes any remaining edge (e.g. clock skew,
+  // nonce consumed by the concurrent /verify/attest call between start and callback).
+  const proofNonce = await db
+    .select()
+    .from(noncesTable)
+    .where(
+      and(
+        eq(noncesTable.nonce, storedNonce),
+        eq(noncesTable.walletAddress, walletAddress),
+        or(
+          isNull(noncesTable.expiresAt),
+          gt(noncesTable.expiresAt, new Date()),
+        ),
+      ),
+    )
+    .limit(1);
+
+  if (!proofNonce.length) {
+    await db.delete(krakenOauthStatesTable).where(eq(krakenOauthStatesTable.state, state));
+    res.status(400).json({ error: "proof_expired", message: "The wallet proof used to start this flow has expired. Please reconnect your wallet." });
+    return;
+  }
 
   // Consume the state record immediately to prevent replay
   await db.delete(krakenOauthStatesTable).where(eq(krakenOauthStatesTable.state, state));

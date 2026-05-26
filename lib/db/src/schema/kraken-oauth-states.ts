@@ -9,6 +9,7 @@ export const krakenOauthStatesTable = pgTable("kraken_oauth_states", {
   signature: text("signature").notNull(),
   nonce: text("nonce").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 
 export const insertKrakenOauthStateSchema = createInsertSchema(krakenOauthStatesTable).omit({
