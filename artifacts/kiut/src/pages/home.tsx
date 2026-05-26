@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Wizard from "@/components/Wizard";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
@@ -6,6 +6,29 @@ import { useTheme } from "@/lib/theme";
 import {
   Sun, Moon, ChevronRight, ArrowDown, Shield, Lock, Zap, Globe, ExternalLink, Play, Pause,
 } from "lucide-react";
+
+/* ── Scroll reveal hook ────────────────────────────────────── */
+function useReveal() {
+  const observe = useCallback((node: HTMLElement | null) => {
+    if (!node) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add("reveal-visible");
+            io.unobserve(e.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
+    );
+    // Observe the element and all its children that carry the reveal class
+    const els = [node, ...Array.from(node.querySelectorAll(".reveal, .reveal-fade"))];
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+  return observe;
+}
 
 function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
@@ -21,12 +44,11 @@ function ThemeToggle() {
 }
 
 function StepCard({
-  number, icon: Icon, title, description, delay,
-}: { number: string; icon: React.ElementType; title: string; description: string; delay: string }) {
+  number, icon: Icon, title, description, stagger,
+}: { number: string; icon: React.ElementType; title: string; description: string; stagger: string }) {
   return (
     <div
-      className="card-hover gradient-border relative flex flex-col gap-4 p-6 rounded-2xl bg-card border border-border"
-      style={{ animationDelay: delay }}
+      className={`reveal card-hover gradient-border relative flex flex-col gap-4 p-6 rounded-2xl bg-card border border-border ${stagger}`}
     >
       <div className="flex items-center gap-3">
         <span className="text-xs font-bold text-primary/60 tracking-widest uppercase">Step {number}</span>
@@ -42,10 +64,10 @@ function StepCard({
 }
 
 function FeatureCard({
-  icon: Icon, title, description, accent,
-}: { icon: React.ElementType; title: string; description: string; accent: string }) {
+  icon: Icon, title, description, accent, stagger,
+}: { icon: React.ElementType; title: string; description: string; accent: string; stagger: string }) {
   return (
-    <div className="card-hover group relative flex flex-col gap-4 p-6 rounded-2xl bg-card border border-border overflow-hidden">
+    <div className={`reveal card-hover group relative flex flex-col gap-4 p-6 rounded-2xl bg-card border border-border overflow-hidden ${stagger}`}>
       <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${accent} blur-3xl scale-150`} />
       <div className="relative z-10">
         <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-primary/20 transition-all duration-300">
@@ -58,9 +80,9 @@ function FeatureCard({
   );
 }
 
-function StatPill({ value, label }: { value: string; label: string }) {
+function StatPill({ value, label, stagger }: { value: string; label: string; stagger: string }) {
   return (
-    <div className="flex flex-col items-center gap-1 px-6 py-3 rounded-2xl bg-card border border-border hover:border-primary/40 transition-colors duration-200">
+    <div className={`reveal flex flex-col items-center gap-1 px-6 py-3 rounded-2xl bg-card border border-border hover:border-primary/40 transition-colors duration-200 ${stagger}`}>
       <span className="text-2xl font-bold text-foreground">{value}</span>
       <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
     </div>
@@ -72,6 +94,8 @@ export default function Home() {
   const [videoPlaying, setVideoPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const wizardRef = useRef<HTMLDivElement>(null);
+
+  const revealRef = useReveal();
 
   function handleGetStarted() {
     setStarted(true);
@@ -90,12 +114,27 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col relative">
-      {/* ── Ambient background glows ─── */}
+
+      {/* ── Animated gradient mesh background ─── */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden gradient-mesh-bg" />
+
+      {/* ── Aurora orbs (drift independently) ─── */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute top-[-15%] left-[-5%] w-[45%] h-[45%] rounded-full bg-primary/8 dark:bg-primary/10 blur-[140px]" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[40%] h-[50%] rounded-full bg-primary/5 dark:bg-primary/6 blur-[120px]" />
-        <div className="absolute top-[40%] left-[30%] w-[30%] h-[30%] rounded-full bg-violet-500/3 dark:bg-violet-500/5 blur-[100px]" />
+        {/* Orb 1 — top-left, primary purple */}
+        <div className="animate-aurora-1 absolute top-[-10%] left-[-8%] w-[50%] h-[50%] rounded-full bg-primary/12 dark:bg-primary/15 blur-[130px]" />
+        {/* Orb 2 — bottom-right, indigo */}
+        <div className="animate-aurora-2 absolute bottom-[-15%] right-[-12%] w-[45%] h-[55%] rounded-full bg-indigo-500/8 dark:bg-indigo-500/12 blur-[120px]" />
+        {/* Orb 3 — center, violet */}
+        <div className="animate-aurora-3 absolute top-[35%] left-[25%] w-[35%] h-[35%] rounded-full bg-violet-500/6 dark:bg-violet-500/10 blur-[110px]" />
+        {/* Orb 4 — top-right, fuchsia accent */}
+        <div className="animate-aurora-4 absolute top-[5%] right-[5%] w-[28%] h-[30%] rounded-full bg-fuchsia-500/5 dark:bg-fuchsia-500/8 blur-[90px]" />
+        {/* Orb 5 — bottom-left, blue */}
+        <div className="animate-aurora-2 absolute bottom-[10%] left-[10%] w-[25%] h-[30%] rounded-full bg-blue-600/4 dark:bg-blue-600/7 blur-[100px]" style={{ animationDelay: "-7s" }} />
       </div>
+
+      {/* ── Dot grid overlay ─── */}
+      <div className="fixed inset-0 pointer-events-none z-0 dot-grid opacity-30 dark:opacity-20" />
+
       {/* ── Header ─────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
@@ -122,22 +161,29 @@ export default function Home() {
           </div>
         </div>
       </header>
+
       <main className="flex-1 relative z-10">
 
         {/* ── Hero ──────────────────────────────────────────── */}
         <section className="relative flex flex-col items-center justify-center text-center px-4 pt-24 pb-16 min-h-[92vh]">
 
+          {/* Radial hero spotlight */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-primary/5 dark:bg-primary/8 blur-[120px] animate-pulse" style={{ animationDuration: "6s" }} />
+          </div>
+
           {/* Badge image */}
-          <div className="relative mb-10 group">
-            <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-3xl scale-125 opacity-50 group-hover:opacity-90 transition-opacity duration-700" />
-            <div className="absolute inset-0 rounded-2xl animate-pulse-glow opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="relative mb-10 group animate-float" style={{ animationDuration: "5s" }}>
+            <div className="absolute inset-0 rounded-2xl bg-primary/25 blur-3xl scale-130 opacity-60 group-hover:opacity-100 transition-opacity duration-700 animate-pulse" style={{ animationDuration: "4s" }} />
+            <div className="absolute -inset-1 rounded-3xl bg-gradient-to-tr from-primary/40 via-fuchsia-500/20 to-indigo-500/30 blur-xl opacity-70 animate-pulse-glow" />
             <img
               src="/kiut-badge.jpeg"
               alt="KIUT Badge"
-              className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-2xl shadow-2xl border border-primary/20 animate-float z-10"
+              className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-2xl shadow-2xl border border-primary/30 z-10"
             />
           </div>
 
+          {/* Headline */}
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6 max-w-4xl leading-[1.08]">
             <span className="text-foreground">Prove You Are </span>
             <span className="shimmer-text">Human</span>
@@ -169,24 +215,24 @@ export default function Home() {
 
           {/* Stats row */}
           <div className="flex flex-wrap items-center justify-center gap-3">
-            <StatPill value="EAS" label="Attestation Standard" />
-            <StatPill value="INK" label="Blockchain" />
-            <StatPill value="KRAKEN" label="Exchange" />
-            <StatPill value="1" label="KIUT per Account" />
+            <StatPill value="EAS" label="Attestation Standard" stagger="stagger-1" />
+            <StatPill value="INK" label="Blockchain" stagger="stagger-2" />
+            <StatPill value="KRAKEN" label="Exchange" stagger="stagger-3" />
+            <StatPill value="1" label="KIUT per Account" stagger="stagger-4" />
           </div>
 
         </section>
 
         {/* ── Wizard (appears when started) ─────────────────── */}
         {started && (
-          <section className="py-12 px-4 max-w-xl mx-auto" ref={wizardRef}>
+          <section className="py-12 px-4 max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500" ref={wizardRef}>
             <Wizard />
           </section>
         )}
 
         {/* ── How It Works ──────────────────────────────────── */}
-        <section id="how-it-works" className="py-24 px-4 max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+        <section id="how-it-works" className="py-24 px-4 max-w-7xl mx-auto" ref={revealRef}>
+          <div className="text-center mb-16 reveal">
             <span className="text-xs font-bold tracking-widest uppercase text-primary mb-3 block">Simple Process</span>
             <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">How It Works</h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
@@ -195,48 +241,28 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <StepCard
-              number="01"
-              icon={Lock}
-              title="Connect Wallet"
-              description="Connect any EVM wallet using RainbowKit. Your wallet will hold the soulbound NFT permanently."
-              delay="0ms"
-            />
-            <StepCard
-              number="02"
-              icon={Shield}
-              title="Sign Message"
-              description="Sign an EIP-191 personal message to cryptographically prove you own the connected wallet. Free — no gas."
-              delay="75ms"
-            />
-            <StepCard
-              number="03"
-              icon={Globe}
-              title="Link Kraken"
-              description="Authorize KIUT to confirm your Kraken account status via OAuth. No trading data is accessed."
-              delay="150ms"
-            />
-            <StepCard
-              number="04"
-              icon={Zap}
-              title="Mint NFT"
-              description="Receive your EAS attestation on Inkonchain and mint your soulbound KIUT NFT — permanent proof of humanity."
-              delay="225ms"
-            />
+            <StepCard number="01" icon={Lock}   title="Connect Wallet"  description="Connect any EVM wallet using RainbowKit. Your wallet will hold the soulbound NFT permanently." stagger="stagger-1" />
+            <StepCard number="02" icon={Shield} title="Sign Message"    description="Sign an EIP-191 personal message to cryptographically prove you own the connected wallet. Free — no gas." stagger="stagger-2" />
+            <StepCard number="03" icon={Globe}  title="Link Kraken"     description="Authorize KIUT to confirm your Kraken account status via OAuth. No trading data is accessed." stagger="stagger-3" />
+            <StepCard number="04" icon={Zap}    title="Mint NFT"        description="Receive your EAS attestation on Inkonchain and mint your soulbound KIUT NFT — permanent proof of humanity." stagger="stagger-4" />
           </div>
         </section>
 
         {/* ── Demo Video ────────────────────────────────────── */}
-        <section id="demo" className="py-24 px-4 bg-muted/30 dark:bg-muted/20">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-12">
+        <section id="demo" className="py-24 px-4 relative overflow-hidden">
+          {/* Section gradient backdrop */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-indigo-500/5 dark:from-primary/8 dark:to-indigo-500/8" />
+          <div className="absolute inset-0 bg-muted/30 dark:bg-muted/20" />
+
+          <div className="max-w-4xl mx-auto relative z-10" ref={revealRef}>
+            <div className="text-center mb-12 reveal">
               <span className="text-xs font-bold tracking-widest uppercase text-primary mb-3 block">Claim is LIVE</span>
-              <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Claim you unique SBT</h2>
+              <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Claim your unique SBT</h2>
               <p className="text-muted-foreground">View the NFT in your wallet</p>
             </div>
 
             <div
-              className="relative rounded-2xl overflow-hidden border border-border shadow-2xl group cursor-pointer"
+              className="reveal relative rounded-2xl overflow-hidden border border-border shadow-2xl group cursor-pointer hover:border-primary/40 transition-colors duration-300"
               onClick={toggleVideo}
             >
               <video
@@ -248,7 +274,6 @@ export default function Home() {
                 onPlay={() => setVideoPlaying(true)}
                 onPause={() => setVideoPlaying(false)}
               />
-              {/* Play/pause overlay */}
               <div className={`absolute inset-0 flex items-center justify-center bg-black/40 transition-opacity duration-300 ${videoPlaying ? "opacity-0 group-hover:opacity-100" : "opacity-100"}`}>
                 <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center hover:scale-110 transition-transform duration-200">
                   {videoPlaying
@@ -256,87 +281,54 @@ export default function Home() {
                     : <Play className="w-6 h-6 text-white ml-0.5" />}
                 </div>
               </div>
-              {/* Gradient border glow on hover */}
               <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-primary/0 group-hover:ring-primary/30 transition-all duration-300 pointer-events-none" />
             </div>
           </div>
         </section>
 
         {/* ── Features ──────────────────────────────────────── */}
-        <section className="py-24 px-4 max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+        <section className="py-24 px-4 max-w-7xl mx-auto" ref={revealRef}>
+          <div className="text-center mb-16 reveal">
             <span className="text-xs font-bold tracking-widest uppercase text-primary mb-3 block">Why KIUT</span>
             <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Built for Humanity</h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              Every owner, is a verified kraken &amp; Inkonchain user.
+              Every owner is a verified Kraken &amp; Inkonchain user.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <FeatureCard
-              icon={Lock}
-              title="Soulbound & Permanent"
-              description="Your KIUT NFT cannot be transferred, sold, or revoked by anyone else. Once minted, it is permanently bound to your wallet — a true proof of humanity."
-              accent="bg-violet-500/5"
-            />
-            <FeatureCard
-              icon={Shield}
-              title="Privacy Preserving"
-              description="Only your wallet address goes onchain. Your name, email, trading history, and personal data never leave Kraken. Zero personal information is exposed."
-              accent="bg-blue-500/5"
-            />
-            <FeatureCard
-              icon={Zap}
-              title="EAS Attestation"
-              description="Built on the Ethereum Attestation Service — an open standard for onchain trust. Your attestation is readable by any dapp or protocol on Inkonchain."
-              accent="bg-purple-500/5"
-            />
+            <FeatureCard icon={Lock}   title="Soulbound & Permanent"  description="Your KIUT NFT cannot be transferred, sold, or revoked by anyone else. Once minted, it is permanently bound to your wallet — a true proof of humanity." accent="bg-violet-500/5" stagger="stagger-1" />
+            <FeatureCard icon={Shield} title="Privacy Preserving"     description="Only your wallet address goes onchain. Your name, email, trading history, and personal data never leave Kraken. Zero personal information is exposed." accent="bg-blue-500/5"   stagger="stagger-2" />
+            <FeatureCard icon={Zap}    title="EAS Attestation"        description="Built on the Ethereum Attestation Service — an open standard for onchain trust. Your attestation is readable by any dapp or protocol on Inkonchain." accent="bg-purple-500/5" stagger="stagger-3" />
           </div>
         </section>
 
         {/* ── FAQ ───────────────────────────────────────────── */}
-        <section id="faq" className="py-24 px-4 bg-muted/30 dark:bg-muted/20">
-          <div className="max-w-3xl mx-auto">
-            <div className="text-center mb-16">
+        <section id="faq" className="py-24 px-4 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-tl from-violet-500/5 via-transparent to-primary/5 dark:from-violet-500/8 dark:to-primary/8" />
+          <div className="absolute inset-0 bg-muted/30 dark:bg-muted/20" />
+
+          <div className="max-w-3xl mx-auto relative z-10" ref={revealRef}>
+            <div className="text-center mb-16 reveal">
               <span className="text-xs font-bold tracking-widest uppercase text-primary mb-3 block">Got Questions</span>
               <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Frequently Asked</h2>
             </div>
 
             <Accordion type="single" collapsible className="w-full space-y-2">
               {[
-                {
-                  q: "What is KIUT?",
-                  a: "KIUT is a soulbound NFT that proves you are a verified, unique human onchain. It links your Kraken exchange account to your Web3 wallet via an EAS attestation on Inkonchain."
-                },
-                {
-                  q: "What goes onchain?",
-                  a: "Only your wallet address and a confirmation that it's been verified — nothing else. Your personal details, name, and trading data stay private on Kraken."
-                },
-                {
-                  q: "Is KIUT transferable?",
-                  a: "No. KIUT is a soulbound NFT — it cannot be transferred or sold. It is permanently bound to your wallet address."
-                },
-                {
-                  q: "Do I pay gas fees?",
-                  a: "Signing the verification message is free (no gas). Minting the NFT requires a small gas fee on Inkonchain, which is extremely low — typically under $0.01."
-                },
-                {
-                  q: "How many wallets can I verify?",
-                  a: "One wallet per Kraken account. This one-to-one mapping is what makes KIUT a reliable proof of unique humanity."
-                },
-                {
-                  q: "What can I use KIUT for?",
-                  a: "KIUT is accepted by ecosystem partners as proof of humanity. It integrates into Proof of Humanity verification criteria and gating mechanisms for dapps on Inkonchain."
-                },
-                {
-                  q: "How does the verification work technically?",
-                  a: "You sign an EIP-191 personal message to prove wallet ownership, then authorize KIUT via Kraken OAuth. The backend issues an EAS attestation on Inkonchain linking your verified Kraken identity to your wallet."
-                },
+                { q: "What is KIUT?", a: "KIUT is a soulbound NFT that proves you are a verified, unique human onchain. It links your Kraken exchange account to your Web3 wallet via an EAS attestation on Inkonchain." },
+                { q: "What goes onchain?", a: "Only your wallet address and a confirmation that it's been verified — nothing else. Your personal details, name, and trading data stay private on Kraken." },
+                { q: "Is KIUT transferable?", a: "No. KIUT is a soulbound NFT — it cannot be transferred or sold. It is permanently bound to your wallet address." },
+                { q: "Do I pay gas fees?", a: "Signing the verification message is free (no gas). Minting the NFT requires a small gas fee on Inkonchain, which is extremely low — typically under $0.01." },
+                { q: "How many wallets can I verify?", a: "One wallet per Kraken account. This one-to-one mapping is what makes KIUT a reliable proof of unique humanity." },
+                { q: "What can I use KIUT for?", a: "KIUT is accepted by ecosystem partners as proof of humanity. It integrates into Proof of Humanity verification criteria and gating mechanisms for dapps on Inkonchain." },
+                { q: "How does the verification work technically?", a: "You sign an EIP-191 personal message to prove wallet ownership, then authorize KIUT via Kraken OAuth. The backend issues an EAS attestation on Inkonchain linking your verified Kraken identity to your wallet." },
               ].map((item, i) => (
                 <AccordionItem
                   key={i}
                   value={`item-${i}`}
-                  className="border border-border rounded-xl px-5 data-[state=open]:border-primary/40 transition-colors duration-200 bg-card"
+                  className="reveal border border-border rounded-xl px-5 data-[state=open]:border-primary/40 transition-colors duration-200 bg-card/80 backdrop-blur-sm"
+                  style={{ transitionDelay: `${i * 0.05}s` }}
                 >
                   <AccordionTrigger className="text-left font-medium hover:no-underline py-4">
                     {item.q}
@@ -352,11 +344,15 @@ export default function Home() {
 
         {/* ── CTA Banner ────────────────────────────────────── */}
         <section className="py-24 px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="relative rounded-3xl border border-primary/20 bg-primary/5 dark:bg-primary/10 p-6 sm:p-12 overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-violet-500/10 pointer-events-none" />
+          <div className="max-w-3xl mx-auto text-center" ref={revealRef}>
+            <div className="reveal relative rounded-3xl border border-primary/30 bg-card/60 backdrop-blur-md p-6 sm:p-12 overflow-hidden shadow-[0_0_80px_rgba(147,51,234,0.1)]">
+              {/* Animated gradient fill */}
+              <div className="absolute inset-0 animate-gradient-x bg-gradient-to-br from-primary/10 via-violet-500/8 to-indigo-500/10 pointer-events-none" />
+              {/* Top edge glow */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+
               <div className="relative z-10">
-                <img src="/kiut-badge.jpeg" alt="KIUT" className="w-16 h-16 rounded-xl mx-auto mb-6 shadow-lg" />
+                <img src="/kiut-badge.jpeg" alt="KIUT" className="w-16 h-16 rounded-xl mx-auto mb-6 shadow-lg animate-float" style={{ animationDuration: "6s" }} />
                 <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
                   Ready to Verify Your Humanity?
                 </h2>
@@ -376,8 +372,9 @@ export default function Home() {
         </section>
 
       </main>
+
       {/* ── Footer ────────────────────────────────────────── */}
-      <footer className="border-t border-border/50 bg-background/80 backdrop-blur-sm">
+      <footer className="border-t border-border/50 bg-background/80 backdrop-blur-sm relative z-10">
         <div className="max-w-7xl mx-auto px-6 py-10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2">
