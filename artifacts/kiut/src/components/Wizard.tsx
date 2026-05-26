@@ -128,26 +128,52 @@ export default function Wizard() {
     }
 
     sessionStorage.removeItem(SESSION_KEY);
+    setStep(4);
     setIsAttesting(true);
 
-    createAttestation.mutate(
+    // The signing proof used to start Kraken OAuth is single-use and was consumed
+    // by that step. A fresh wallet signature is required here to authorize the final
+    // on-chain attestation, preventing a stolen proof from being replayed.
+    getSignMessage.mutate(
+      { data: { walletAddress: verState.walletAddress } },
       {
-        data: {
-          walletAddress: verState.walletAddress,
-          signature: verState.signature,
-          nonce: verState.nonce,
-        },
-      },
-      {
-        onSuccess: (data) => {
-          setAttestationUid(data.attestationUid);
-          setStep(4);
-          setIsAttesting(false);
+        onSuccess: (msgData) => {
+          signMessage(
+            { message: msgData.message },
+            {
+              onSuccess: (sig) => {
+                createAttestation.mutate(
+                  {
+                    data: {
+                      walletAddress: verState.walletAddress,
+                      signature: sig,
+                      nonce: msgData.nonce,
+                    },
+                  },
+                  {
+                    onSuccess: (data) => {
+                      setAttestationUid(data.attestationUid);
+                      setIsAttesting(false);
+                    },
+                    onError: (err) => {
+                      setIsAttesting(false);
+                      toast({ variant: "destructive", title: "Attestation failed", description: err.message });
+                    },
+                  },
+                );
+              },
+              onError: (err) => {
+                setIsAttesting(false);
+                toast({ variant: "destructive", title: "Signing failed", description: err.message });
+                setStep(2);
+              },
+            },
+          );
         },
         onError: (err) => {
           setIsAttesting(false);
-          toast({ variant: "destructive", title: "Attestation failed", description: err.message });
-          setStep(4);
+          toast({ variant: "destructive", title: "Failed to get signing message", description: err.message });
+          setStep(2);
         },
       },
     );

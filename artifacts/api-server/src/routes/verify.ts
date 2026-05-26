@@ -16,8 +16,18 @@ const EAS_SIGNER_PRIVATE_KEY = process.env.EAS_SIGNER_PRIVATE_KEY ?? "";
 const INK_RPC_URL = "https://rpc-gel.inkonchain.com";
 const INK_EAS_CONTRACT = "0xC2679fBD37d54388Ce493F1DB75320D236e1815e";
 const INK_EXPLORER_URL = "https://explorer.inkonchain.com";
+const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:3000";
+const INK_CHAIN_ID = 57073;
 
 const NONCE_TTL_MS = 15 * 60 * 1000;
+
+function getAppHost(): string {
+  try {
+    return new URL(FRONTEND_URL).host;
+  } catch {
+    return "localhost";
+  }
+}
 
 function verifySignature(message: string, signature: string, expectedAddress: string): boolean {
   try {
@@ -68,7 +78,18 @@ router.post("/verify/sign-message", async (req, res): Promise<void> => {
 
   const nonce = crypto.randomBytes(16).toString("hex");
   const timestamp = now.toISOString();
-  const message = `KIUT Verification\n\nWallet: ${walletAddress}\nNonce: ${nonce}\nTimestamp: ${timestamp}\n\nBy signing this message, you confirm ownership of this wallet address and authorize KIUT to verify your identity onchain.`;
+  const appHost = getAppHost();
+  const message = [
+    "KIUT Wallet Verification",
+    "",
+    `Domain: ${appHost}`,
+    `Address: ${walletAddress}`,
+    `Nonce: ${nonce}`,
+    `Issued At: ${timestamp}`,
+    `Chain ID: ${INK_CHAIN_ID}`,
+    "",
+    "By signing this message, you confirm ownership of this wallet address and authorize KIUT to verify your identity onchain. This message is valid for 15 minutes and may only be used once.",
+  ].join("\n");
   const expiresAt = new Date(now.getTime() + NONCE_TTL_MS);
 
   await db.insert(noncesTable).values({
@@ -244,6 +265,13 @@ router.post("/verify/attest", async (req, res): Promise<void> => {
   }
 
   const krakenAccountId = freshVerification[0].krakenAccountId;
+
+  // Derive a one-way commitment of the Kraken account identifier. Embedding the
+  // raw identifier on a public chain would let any observer permanently link the
+  // wallet to the third-party identity. A SHA-256 hash is sufficient for the
+  // on-chain proof-of-uniqueness check while keeping the source value private.
+  const krakenAccountIdHash = `0x${crypto.createHash("sha256").update(krakenAccountId).digest("hex")}` as `0x${string}`;
+
   let attestationUid: string;
   let txHash: string;
 
@@ -255,10 +283,10 @@ router.post("/verify/attest", async (req, res): Promise<void> => {
     const eas = new EAS(INK_EAS_CONTRACT);
     eas.connect(signer as never);
 
-    const schemaEncoder = new SchemaEncoder("address walletAddress,string krakenAccountId,bool krakenVerified");
+    const schemaEncoder = new SchemaEncoder("address walletAddress,bytes32 krakenAccountIdHash,bool krakenVerified");
     const encodedData = schemaEncoder.encodeData([
       { name: "walletAddress", value: walletAddress, type: "address" },
-      { name: "krakenAccountId", value: krakenAccountId, type: "string" },
+      { name: "krakenAccountIdHash", value: krakenAccountIdHash, type: "bytes32" },
       { name: "krakenVerified", value: true, type: "bool" },
     ]);
 
@@ -269,7 +297,7 @@ router.post("/verify/attest", async (req, res): Promise<void> => {
       data: {
         recipient: walletAddress,
         expirationTime: BigInt(0),
-        revocable: false,
+        revocable: true,
         data: encodedData,
       },
     });

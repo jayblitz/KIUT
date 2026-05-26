@@ -45,10 +45,7 @@ router.post("/auth/kraken/start", async (req, res): Promise<void> => {
   const { signature, nonce } = parsed.data;
   const walletAddress = parsed.data.walletAddress.toLowerCase();
 
-  // Validate the nonce without consuming it. The same (nonce, signature) pair is
-  // intentionally reused for both Kraken linkage and the subsequent /verify/attest
-  // step; consuming it here would break attestation. Instead we prevent state
-  // explosion via one-active-state-per-nonce semantics below.
+  // Validate the nonce — it must be unused and unexpired.
   const nonceRecord = await db
     .select()
     .from(noncesTable)
@@ -76,6 +73,22 @@ router.post("/auth/kraken/start", async (req, res): Promise<void> => {
     return;
   }
 
+  // Consume the nonce immediately. Each wallet proof is single-use: accepting the
+  // same (nonce, signature) for both Kraken linking and later attestation would let
+  // an attacker who collects a signature off-site reuse it to create a fraudulent
+  // attestation. Consuming it here ensures the /verify/attest step requires a fresh
+  // wallet proof obtained after OAuth completes.
+  const consumed = await db
+    .update(noncesTable)
+    .set({ used: true })
+    .where(and(eq(noncesTable.nonce, nonce), eq(noncesTable.used, false)))
+    .returning({ id: noncesTable.id });
+
+  if (!consumed.length) {
+    res.status(409).json({ error: "nonce_used", message: "Nonce has already been consumed by a concurrent request" });
+    return;
+  }
+
   const state = crypto.randomBytes(32).toString("hex");
   const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
@@ -86,12 +99,9 @@ router.post("/auth/kraken/start", async (req, res): Promise<void> => {
   const nonceExpiry = nonceRecord[0].expiresAt;
   const oauthStateExpiry = nonceExpiry && nonceExpiry < defaultExpiry ? nonceExpiry : defaultExpiry;
 
-  // Enforce one-active-state-per-nonce: delete any existing (possibly stale) OAuth
-  // state rows for this nonce before inserting a fresh one. This prevents a caller
-  // from accumulating unbounded state rows by replaying the same wallet proof.
-  // The nonce is NOT marked used here because the same (nonce, signature) pair must
-  // remain valid for the subsequent /verify/attest step.
-  await db.delete(krakenOauthStatesTable).where(eq(krakenOauthStatesTable.nonce, nonce));
+  // Delete any existing (possibly stale) OAuth state rows for this wallet before
+  // inserting a fresh one.
+  await db.delete(krakenOauthStatesTable).where(eq(krakenOauthStatesTable.walletAddress, walletAddress));
 
   await db.insert(krakenOauthStatesTable).values({
     state,
