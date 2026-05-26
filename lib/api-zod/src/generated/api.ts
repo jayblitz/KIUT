@@ -149,7 +149,6 @@ export const GetNftStatusResponse = zod.object({
   "tokenId": zod.string().nullish(),
   "txHash": zod.string().nullish(),
   "explorerUrl": zod.string().nullish(),
-  "attestationUid": zod.string().nullish(),
   "mintedAt": zod.string().nullish()
 })
 

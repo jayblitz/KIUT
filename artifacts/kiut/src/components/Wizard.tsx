@@ -261,7 +261,7 @@ export default function Wizard() {
 
   const handleMint = async () => {
     if (!address) return;
-    const uid = attestationUid || nftStatus?.attestationUid || "";
+    const uid = attestationUid;
     if (!uid) {
       toast({
         variant: "destructive",
@@ -467,7 +467,7 @@ export default function Wizard() {
                     {/* Wallet metadata */}
                     <div className="text-sm text-muted-foreground space-y-1.5 bg-muted/40 rounded-lg p-3 sm:p-4 text-left">
                       <p className="flex items-center justify-between gap-2 flex-wrap">Wallet: <span className="font-mono text-foreground break-all">{address?.slice(0, 6)}…{address?.slice(-4)}</span></p>
-                      <p className="flex items-center justify-between gap-2 flex-wrap">Attestation: <span className="font-mono text-foreground break-all">{(attestationUid || nftStatus?.attestationUid || "–").slice(0, 12)}…</span></p>
+                      <p className="flex items-center justify-between gap-2 flex-wrap">Attestation: <span className="font-mono text-foreground break-all">{attestationUid ? `${attestationUid.slice(0, 12)}…` : "–"}</span></p>
                       <p className="flex items-center justify-between gap-2 flex-wrap">Chain: <span className="text-foreground">Inkonchain (57073)</span></p>
                       <p className="flex items-center justify-between gap-2 flex-wrap">Type: <span className="text-foreground">Soulbound · Non-transferable</span></p>
                     </div>
@@ -544,7 +544,7 @@ export default function Wizard() {
                     size="lg"
                     className="w-full max-w-sm bg-primary hover:bg-primary/90 text-white shadow-[0_0_20px_rgba(147,51,234,0.3)]"
                     onClick={handleMint}
-                    disabled={(!attestationUid && !nftStatus?.attestationUid) || hasInsufficientBalance}
+                    disabled={!attestationUid || hasInsufficientBalance}
                   >
                     <Zap className="mr-2 w-4 h-4" />
                     {hasInsufficientBalance ? "Insufficient Balance" : "Mint KIUT NFT"}

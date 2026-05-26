@@ -372,7 +372,6 @@ router.get("/nft/status/:walletAddress", async (req, res): Promise<void> => {
       tokenId: v.nftTokenId ?? null,
       txHash: v.nftTxHash ?? null,
       explorerUrl: v.nftTxHash ? `${INK_EXPLORER_URL}/tx/${v.nftTxHash}` : null,
-      attestationUid: v.attestationUid ?? null,
       mintedAt: v.nftMintedAt?.toISOString() ?? null,
     }),
   );
