@@ -35,7 +35,7 @@ The mockup sandbox artifact is development-only and should be ignored for produc
 
 ### Spoofing
 
-The project uses signed wallet messages instead of server sessions, so spoofing risk centers on replayed signatures, stale nonces, and weak OAuth state handling. The system must ensure every wallet-linked action is tied to a fresh, single-use proof of wallet control, that nonce and OAuth-state material expires promptly, and that Kraken callbacks cannot be replayed or mixed across users.
+The project uses signed wallet messages instead of server sessions, so spoofing risk centers on replayed signatures, stale nonces, and weak OAuth state handling. The system must ensure every wallet-linked action is tied to a fresh, single-use proof of wallet control, that nonce and OAuth-state material expires promptly, that Kraken callbacks cannot be replayed or mixed across users, and that wallet signatures are bound to the KIUT relying party and intended action instead of being reusable as a generic bearer proof across OAuth start and final attestation.
 
 ### Tampering
 
@@ -43,7 +43,7 @@ Attackers can send arbitrary wallet addresses, attestation UIDs, and transaction
 
 ### Information Disclosure
 
-The API exposes some public blockchain-related state by design, but secrets, OAuth tokens, and private verification metadata must never be logged or returned to arbitrary callers. Public badge and status endpoints must not reveal more than is intentionally public from the NFT itself; in particular, attestation handles or third-party identity linkage data should be treated as sensitive unless the product explicitly decides those identifiers are public. Error messages and logs must avoid leaking internal secrets or raw authorization data.
+The API exposes some public blockchain-related state by design, but secrets, OAuth tokens, and private verification metadata must never be logged or returned to arbitrary callers. Public badge and status endpoints must not reveal more than is intentionally public from the NFT itself; in particular, attestation handles or third-party identity linkage data should be treated as sensitive unless the product explicitly decides those identifiers are public. Data written into public on-chain attestations must therefore be privacy-preserving by design: raw Kraken account identifiers or other stable third-party handles should not be embedded directly when a commitment, hash, or application-scoped pseudonymous identifier would satisfy the same business need. Error messages and logs must avoid leaking internal secrets or raw authorization data.
 
 ### Denial of Service
 
@@ -51,4 +51,4 @@ Several public routes trigger database writes, external OAuth or RPC calls, cryp
 
 ### Elevation of Privilege
 
- The most important privilege boundary is the claim that one real Kraken-backed human receives one authoritative on-chain identity proof. The backend and contract must enforce that only legitimately verified wallets can receive mint authorizations, that replayed or duplicated identity linkages are rejected, that any preview/demo verification path is impossible in production, that attestation issuance fails closed when the backend signer is unavailable, that once a Kraken identity has been used to produce a non-revocable proof it cannot be silently freed for reuse on another wallet without revocation or equivalent invalidation of the earlier proof, and that KIUT-hosted badge or metadata endpoints only present tokens that actually exist so attackers cannot spoof proof-of-humanity pages for nonexistent assets.
+ The most important privilege boundary is the claim that one real Kraken-backed human receives one authoritative on-chain identity proof. The backend and contract must enforce that only legitimately verified wallets can receive mint authorizations, that replayed or duplicated identity linkages are rejected, that any preview/demo verification path is impossible in production, that attestation issuance fails closed when the backend signer is unavailable, that once a Kraken identity has been used to produce a non-revocable proof it cannot be silently freed for reuse on another wallet without revocation or equivalent invalidation of the earlier proof, that possession of a previously collected wallet signature is not enough to bind an arbitrary Kraken account to that wallet, and that KIUT-hosted badge or metadata endpoints only present tokens that actually exist so attackers cannot spoof proof-of-humanity pages for nonexistent assets.
