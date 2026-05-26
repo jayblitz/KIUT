@@ -231,7 +231,25 @@ export default function BadgePage() {
           </div>
         )}
 
-        {isValidTokenId && !isLoading && !isError && metadata && (
+        {isValidTokenId && !isLoading && !isError && metadata && ownerData && !ownerData.walletAddress && (
+          <div className="flex flex-col items-center gap-4 text-center max-w-sm">
+            <div className="w-14 h-14 rounded-2xl bg-destructive/10 flex items-center justify-center">
+              <AlertCircle className="w-7 h-7 text-destructive" />
+            </div>
+            <h1 className="text-xl font-semibold">Badge Not Found</h1>
+            <p className="text-muted-foreground text-sm">
+              Token <span className="font-mono">#{tokenId}</span> has not been minted. Only real KIUT badges can be viewed here.
+            </p>
+            <Link
+              href="/badge"
+              className="mt-2 text-sm text-primary hover:underline underline-offset-4"
+            >
+              ← Search by wallet address
+            </Link>
+          </div>
+        )}
+
+        {isValidTokenId && !isLoading && !isError && metadata && (!ownerData || ownerData.walletAddress) && (
           <div className="w-full max-w-sm animate-in fade-in duration-500">
             <div className="text-center mb-8">
               <span className="text-xs font-bold tracking-widest uppercase text-primary mb-2 block">

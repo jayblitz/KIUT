@@ -296,10 +296,21 @@ router.get("/nft/owner/:tokenId", async (req, res): Promise<void> => {
 // Serves the unique per-token SVG badge image under the /api prefix.
 // This path is reachable from the browser via the Replit proxy (/api/nft/badge/:tokenId).
 
-router.get("/nft/badge/:tokenId", (req, res): void => {
+router.get("/nft/badge/:tokenId", async (req, res): Promise<void> => {
   const tokenId = parseInt(req.params.tokenId, 10);
   if (isNaN(tokenId) || tokenId < 1) {
     res.status(400).send("Invalid token ID");
+    return;
+  }
+
+  const rows = await db
+    .select({ nftTokenId: verificationsTable.nftTokenId })
+    .from(verificationsTable)
+    .where(eq(verificationsTable.nftTokenId, String(tokenId)))
+    .limit(1);
+
+  if (!rows.length) {
+    res.status(404).send("Token not found");
     return;
   }
 
@@ -316,6 +327,17 @@ router.get("/nft/metadata/:tokenId", async (req, res): Promise<void> => {
 
   if (!tokenId || !/^\d+$/.test(tokenId)) {
     res.status(400).json({ error: "invalid_token_id", message: "Invalid token ID — must be a non-negative integer" });
+    return;
+  }
+
+  const rows = await db
+    .select({ nftTokenId: verificationsTable.nftTokenId })
+    .from(verificationsTable)
+    .where(eq(verificationsTable.nftTokenId, tokenId))
+    .limit(1);
+
+  if (!rows.length) {
+    res.status(404).json({ error: "token_not_found", message: "Token does not exist" });
     return;
   }
 

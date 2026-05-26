@@ -2,6 +2,8 @@ import { Router, type IRouter } from "express";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import { generateBadgeSvg } from "../lib/badge-svg";
+import { db, verificationsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -141,10 +143,21 @@ function buildBadgeHtml(meta: TokenMetadata): string {
 // Mounted at root (no /api prefix) to match the external badge URL:
 //   https://kiut.xyz/badge/:tokenId
 
-router.get("/badge/:tokenId", (req, res): void => {
+router.get("/badge/:tokenId", async (req, res): Promise<void> => {
   const tokenId = parseInt(req.params.tokenId, 10);
   if (isNaN(tokenId) || tokenId < 1) {
     res.status(400).send("Invalid token ID");
+    return;
+  }
+
+  const rows = await db
+    .select({ nftTokenId: verificationsTable.nftTokenId })
+    .from(verificationsTable)
+    .where(eq(verificationsTable.nftTokenId, String(tokenId)))
+    .limit(1);
+
+  if (!rows.length) {
+    res.status(404).send("Token not found");
     return;
   }
 
@@ -160,10 +173,21 @@ router.get("/badge/:tokenId", (req, res): void => {
 // Serves a unique SVG badge image for each token ID.
 // Mounted at root (no /api prefix) — used by on-chain tokenURI on production.
 
-router.get("/nft/badge/:tokenId", (req, res): void => {
+router.get("/nft/badge/:tokenId", async (req, res): Promise<void> => {
   const tokenId = parseInt(req.params.tokenId, 10);
   if (isNaN(tokenId) || tokenId < 1) {
     res.status(400).send("Invalid token ID");
+    return;
+  }
+
+  const rows = await db
+    .select({ nftTokenId: verificationsTable.nftTokenId })
+    .from(verificationsTable)
+    .where(eq(verificationsTable.nftTokenId, String(tokenId)))
+    .limit(1);
+
+  if (!rows.length) {
+    res.status(404).send("Token not found");
     return;
   }
 
@@ -178,10 +202,21 @@ router.get("/nft/badge/:tokenId", (req, res): void => {
 // Mounted at the app root (no /api prefix) to match the on-chain tokenURI:
 //   https://kiut.xyz/nft/metadata/:tokenId
 
-router.get("/nft/metadata/:tokenId", (req, res): void => {
+router.get("/nft/metadata/:tokenId", async (req, res): Promise<void> => {
   const tokenId = parseInt(req.params.tokenId, 10);
   if (isNaN(tokenId) || tokenId < 1) {
     res.status(400).json({ error: "invalid_token_id", message: "Token ID must be a positive integer" });
+    return;
+  }
+
+  const rows = await db
+    .select({ nftTokenId: verificationsTable.nftTokenId })
+    .from(verificationsTable)
+    .where(eq(verificationsTable.nftTokenId, String(tokenId)))
+    .limit(1);
+
+  if (!rows.length) {
+    res.status(404).json({ error: "token_not_found", message: "Token does not exist" });
     return;
   }
 
