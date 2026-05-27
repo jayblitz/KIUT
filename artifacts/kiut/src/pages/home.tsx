@@ -120,16 +120,16 @@ export default function Home() {
 
       {/* ── Aurora orbs (drift independently) ─── */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        {/* Orb 1 — top-left, primary purple */}
-        <div className="animate-aurora-1 absolute top-[-10%] left-[-8%] w-[50%] h-[50%] rounded-full bg-primary/12 dark:bg-primary/15 blur-[130px]" />
-        {/* Orb 2 — bottom-right, indigo */}
-        <div className="animate-aurora-2 absolute bottom-[-15%] right-[-12%] w-[45%] h-[55%] rounded-full bg-indigo-500/8 dark:bg-indigo-500/12 blur-[120px]" />
-        {/* Orb 3 — center, violet */}
-        <div className="animate-aurora-3 absolute top-[35%] left-[25%] w-[35%] h-[35%] rounded-full bg-violet-500/6 dark:bg-violet-500/10 blur-[110px]" />
-        {/* Orb 4 — top-right, fuchsia accent */}
-        <div className="animate-aurora-4 absolute top-[5%] right-[5%] w-[28%] h-[30%] rounded-full bg-fuchsia-500/5 dark:bg-fuchsia-500/8 blur-[90px]" />
-        {/* Orb 5 — bottom-left, blue */}
-        <div className="animate-aurora-2 absolute bottom-[10%] left-[10%] w-[25%] h-[30%] rounded-full bg-blue-600/4 dark:bg-blue-600/7 blur-[100px]" style={{ animationDelay: "-7s" }} />
+        {/* Orb 1 — top-left, electric violet (primary) */}
+        <div className="animate-aurora-1 absolute top-[-12%] left-[-10%] w-[55%] h-[55%] rounded-full blur-[120px]" style={{ background: "rgba(139,92,246,0.28)" }} />
+        {/* Orb 2 — bottom-right, electric cyan */}
+        <div className="animate-aurora-2 absolute bottom-[-18%] right-[-10%] w-[48%] h-[58%] rounded-full blur-[110px]" style={{ background: "rgba(0,212,255,0.16)" }} />
+        {/* Orb 3 — center, violet blend */}
+        <div className="animate-aurora-3 absolute top-[30%] left-[22%] w-[38%] h-[38%] rounded-full blur-[100px]" style={{ background: "rgba(139,92,246,0.13)" }} />
+        {/* Orb 4 — top-right, cyan accent */}
+        <div className="animate-aurora-4 absolute top-[3%] right-[3%] w-[32%] h-[34%] rounded-full blur-[95px]" style={{ background: "rgba(0,212,255,0.12)" }} />
+        {/* Orb 5 — bottom-left, fuchsia-violet */}
+        <div className="animate-aurora-2 absolute bottom-[8%] left-[8%] w-[30%] h-[34%] rounded-full blur-[105px]" style={{ background: "rgba(192,38,211,0.14)", animationDelay: "-7s" }} />
       </div>
 
       {/* ── Dot grid overlay ─── */}
@@ -153,7 +153,7 @@ export default function Home() {
             <ThemeToggle />
             <Button
               size="sm"
-              className="hidden sm:flex bg-primary hover:bg-primary/90 text-white shadow-sm hover:shadow-[0_0_20px_rgba(147,51,234,0.35)] transition-all duration-200"
+              className="hidden sm:flex bg-primary hover:bg-primary/90 text-white shadow-sm hover:shadow-[0_0_24px_rgba(139,92,246,0.45),0_0_50px_rgba(0,212,255,0.08)] transition-all duration-200"
               onClick={handleGetStarted}
             >
               Get Verified
@@ -169,13 +169,13 @@ export default function Home() {
 
           {/* Radial hero spotlight */}
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-primary/5 dark:bg-primary/8 blur-[120px] animate-pulse" style={{ animationDuration: "6s" }} />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full blur-[130px] animate-pulse" style={{ background: "radial-gradient(circle, rgba(139,92,246,0.12) 0%, rgba(0,212,255,0.05) 50%, transparent 70%)", animationDuration: "6s" }} />
           </div>
 
           {/* Badge image */}
           <div className="relative mb-10 group animate-float" style={{ animationDuration: "5s" }}>
-            <div className="absolute inset-0 rounded-2xl bg-primary/25 blur-3xl scale-130 opacity-60 group-hover:opacity-100 transition-opacity duration-700 animate-pulse" style={{ animationDuration: "4s" }} />
-            <div className="absolute -inset-1 rounded-3xl bg-gradient-to-tr from-primary/40 via-fuchsia-500/20 to-indigo-500/30 blur-xl opacity-70 animate-pulse-glow" />
+            <div className="absolute inset-0 rounded-2xl blur-3xl scale-150 opacity-70 group-hover:opacity-100 transition-opacity duration-700 animate-pulse" style={{ background: "rgba(139,92,246,0.35)", animationDuration: "4s" }} />
+            <div className="absolute -inset-2 rounded-3xl blur-xl opacity-80 animate-pulse-glow" style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.5), rgba(0,212,255,0.25), rgba(168,85,247,0.4))" }} />
             <img
               src="/kiut-badge.jpeg"
               alt="KIUT Badge"
@@ -198,7 +198,7 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row items-center gap-3 mb-16">
             <Button
               size="lg"
-              className="h-12 px-8 text-base bg-primary hover:bg-primary/90 text-white shadow-[0_0_30px_rgba(147,51,234,0.3)] hover:shadow-[0_0_50px_rgba(147,51,234,0.5)] hover:scale-105 transition-all duration-200"
+              className="h-12 px-8 text-base bg-primary hover:bg-primary/90 text-white shadow-[0_0_30px_rgba(139,92,246,0.4),0_0_60px_rgba(0,212,255,0.08)] hover:shadow-[0_0_55px_rgba(139,92,246,0.6),0_0_90px_rgba(0,212,255,0.14)] hover:scale-105 transition-all duration-200"
               onClick={handleGetStarted}
             >
               Get Started <ChevronRight className="ml-1 w-4 h-4" />
@@ -345,11 +345,11 @@ export default function Home() {
         {/* ── CTA Banner ────────────────────────────────────── */}
         <section className="py-24 px-4">
           <div className="max-w-3xl mx-auto text-center" ref={revealRef}>
-            <div className="reveal relative rounded-3xl border border-primary/30 bg-card/60 backdrop-blur-md p-6 sm:p-12 overflow-hidden shadow-[0_0_80px_rgba(147,51,234,0.1)]">
+            <div className="reveal relative rounded-3xl border border-primary/35 bg-card/60 backdrop-blur-md p-6 sm:p-12 overflow-hidden" style={{ boxShadow: "0 0 100px rgba(139,92,246,0.15), 0 0 200px rgba(0,212,255,0.05)" }}>
               {/* Animated gradient fill */}
-              <div className="absolute inset-0 animate-gradient-x bg-gradient-to-br from-primary/10 via-violet-500/8 to-indigo-500/10 pointer-events-none" />
+              <div className="absolute inset-0 animate-gradient-x pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.12), rgba(0,212,255,0.06), rgba(168,85,247,0.10))", backgroundSize: "300% 300%" }} />
               {/* Top edge glow */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2/3 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(139,92,246,0.8), rgba(0,212,255,0.5), rgba(139,92,246,0.8), transparent)" }} />
 
               <div className="relative z-10">
                 <img src="/kiut-badge.jpeg" alt="KIUT" className="w-16 h-16 rounded-xl mx-auto mb-6 shadow-lg animate-float" style={{ animationDuration: "6s" }} />
@@ -361,7 +361,7 @@ export default function Home() {
                 </p>
                 <Button
                   size="lg"
-                  className="h-12 px-10 text-base bg-primary hover:bg-primary/90 text-white shadow-[0_0_30px_rgba(147,51,234,0.4)] hover:shadow-[0_0_50px_rgba(147,51,234,0.6)] hover:scale-105 transition-all duration-200"
+                  className="h-12 px-10 text-base bg-primary hover:bg-primary/90 text-white shadow-[0_0_35px_rgba(139,92,246,0.45),0_0_70px_rgba(0,212,255,0.10)] hover:shadow-[0_0_60px_rgba(139,92,246,0.65),0_0_100px_rgba(0,212,255,0.18)] hover:scale-105 transition-all duration-200"
                   onClick={handleGetStarted}
                 >
                   Get Your KIUT <ChevronRight className="ml-1 w-4 h-4" />
