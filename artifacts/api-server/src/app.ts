@@ -31,14 +31,17 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+const isDevelopment = process.env.NODE_ENV === "development";
+
 // Rate limit the public nonce-issuance endpoint before mounting the main router.
 // This endpoint accepts unauthenticated requests and inserts a DB row for every
 // call. Without throttling a caller can flood the database with nonce rows at
 // negligible cost. 10 requests per 15-minute window per IP is generous for
 // legitimate users while making bulk-insert abuse impractical.
+// In development the limit is raised to 200 to avoid blocking rapid test cycles.
 const signMessageRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: isDevelopment ? 200 : 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -54,9 +57,10 @@ app.use("/api/verify/sign-message", signMessageRateLimit);
 // throttling, a single caller can exhaust storage and backend resources at
 // negligible cost. 5 requests per 15-minute window per IP is sufficient for
 // legitimate users while making bulk-abuse impractical.
+// In development the limit is raised to 100 to avoid blocking repeated test mints.
 const mintRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: isDevelopment ? 100 : 5,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
